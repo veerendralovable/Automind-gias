@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole, ServiceAppointment } from '../types';
-import { Calendar, MapPin, Clock, Wrench, CheckCircle, FileText, Cpu } from 'lucide-react';
+import { Calendar, MapPin, Clock, Wrench, CheckCircle, FileText, Cpu, AlertTriangle, Timer } from 'lucide-react';
 import { autoMind } from '../services/autoMindService';
 
 const RepairModal = ({ job, onClose, onComplete }: any) => {
@@ -91,27 +91,56 @@ const Service = ({ role }: { role: UserRole }) => {
     if (role === UserRole.TECHNICIAN) {
         return (
             <div className="max-w-6xl mx-auto">
-                 <h1 className="text-3xl font-bold text-white mb-2">Technician Job Board</h1>
-                 <p className="text-slate-400 mb-8">Select a job to view AI diagnostics and perform repairs.</p>
+                 <div className="flex justify-between items-center mb-8">
+                     <div>
+                        <h1 className="text-3xl font-bold text-white mb-2">Technician Job Board</h1>
+                        <p className="text-slate-400">Select a job to view AI diagnostics and perform repairs.</p>
+                     </div>
+                     <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg flex items-center space-x-2">
+                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                         <span className="text-sm font-bold text-white">Live Queue</span>
+                     </div>
+                 </div>
                  
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {jobs.length === 0 && <p className="text-slate-500">No active jobs assigned.</p>}
+                    {jobs.length === 0 && (
+                        <div className="col-span-3 text-center py-12 border-2 border-dashed border-slate-800 rounded-xl">
+                            <Wrench className="mx-auto text-slate-600 mb-4" size={48} />
+                            <p className="text-slate-500 font-medium">No active jobs assigned.</p>
+                            <p className="text-xs text-slate-600 mt-2">New automated bookings will appear here instantly.</p>
+                        </div>
+                    )}
                     {jobs.map(job => (
-                        <div key={job.id} className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-blue-500 transition-colors">
-                            <div className="flex justify-between items-start mb-4">
-                                <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded font-bold">IN BAY</span>
-                                <span className="text-slate-500 text-xs">{new Date(job.scheduledTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <div key={job.id} className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-blue-500 transition-all group relative overflow-hidden">
+                            {/* Severity Stripe */}
+                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+
+                            <div className="flex justify-between items-start mb-4 pl-2">
+                                <span className="bg-blue-600/20 text-blue-400 text-[10px] uppercase font-bold px-2 py-1 rounded border border-blue-500/30">
+                                    IN BAY 2
+                                </span>
+                                {job.status === 'CONFIRMED' && (
+                                    <span className="flex items-center space-x-1 text-red-400 text-xs font-bold animate-pulse">
+                                        <Timer size={12} /> <span>SLA: 4h</span>
+                                    </span>
+                                )}
                             </div>
-                            <h3 className="text-lg font-bold text-white mb-1">{job.vehicleModel}</h3>
-                            <p className="text-sm text-slate-400 mb-4">{job.predictedIssue}</p>
                             
-                            <button 
-                                onClick={() => setSelectedJob(job)}
-                                className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center space-x-2"
-                            >
-                                <Wrench size={16} />
-                                <span>Open Service Mode</span>
-                            </button>
+                            <div className="pl-2">
+                                <h3 className="text-lg font-bold text-white mb-1 group-hover:text-blue-400 transition-colors">{job.vehicleModel}</h3>
+                                <p className="text-sm text-slate-300 font-medium mb-1">{job.predictedIssue}</p>
+                                <p className="text-xs text-slate-500 mb-4 flex items-center gap-1">
+                                    <Clock size={12} /> Scheduled: {new Date(job.scheduledTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                            
+                                <button 
+                                    onClick={() => setSelectedJob(job)}
+                                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg flex items-center justify-center space-x-2 border border-slate-700 group-hover:bg-blue-600 group-hover:border-blue-500 transition-all"
+                                >
+                                    <Wrench size={16} />
+                                    <span>Start Service</span>
+                                </button>
+                            </div>
                         </div>
                     ))}
                  </div>

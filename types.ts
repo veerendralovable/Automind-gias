@@ -70,6 +70,16 @@ export interface LearningCard {
   fixSummary: string;
   occurrenceCount: number;
   generatedAt: string;
+  clusterId?: string;
+}
+
+export interface ClusterAnalysis {
+  id: string;
+  faultType: string;
+  vehicleModel: string;
+  count: number;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW' | 'CRITICAL';
+  vendorBatch?: string;
 }
 
 export interface UEBALog {

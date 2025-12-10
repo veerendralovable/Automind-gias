@@ -1,22 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { autoMind } from '../services/autoMindService';
-import { LearningCard } from '../types';
-import { Brain, FileText, Share2, Layers } from 'lucide-react';
+import { LearningCard, ClusterAnalysis } from '../types';
+import { Brain, FileText, Share2, Layers, BarChart as BarChartIcon } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 const OEM = () => {
     const [cards, setCards] = useState<LearningCard[]>([]);
+    const [clusters, setClusters] = useState<ClusterAnalysis[]>([]);
 
     useEffect(() => {
         // Poll for updates to show the "Live" effect of technician submission
         const interval = setInterval(() => {
             autoMind.getLearningCards().then(setCards);
+            autoMind.getClusterStats().then(setClusters);
         }, 2000);
         autoMind.getLearningCards().then(setCards);
+        autoMind.getClusterStats().then(setClusters);
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div>
+        <div className="pb-12">
             <header className="mb-8 flex justify-between items-end">
                 <div>
                     <h1 className="text-3xl font-bold text-white">OEM Insights & Learning Cards</h1>
@@ -29,6 +33,34 @@ const OEM = () => {
                     <span className="font-bold text-sm">Cluster Analysis Active</span>
                 </div>
             </header>
+
+            {/* CLUSTER ANALYSIS CHART */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <BarChartIcon className="text-purple-500" />
+                        Defect Trend Analysis (By Fault Type)
+                    </h2>
+                </div>
+                <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={clusters} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
+                            <XAxis type="number" stroke="#64748b" />
+                            <YAxis dataKey="vehicleModel" type="category" width={120} stroke="#94a3b8" fontSize={12} />
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f8fafc' }}
+                                cursor={{fill: '#1e293b'}}
+                            />
+                            <Bar dataKey="count" name="Reported Cases" radius={[0, 4, 4, 0]}>
+                                {clusters.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.severity === 'CRITICAL' ? '#ef4444' : entry.severity === 'HIGH' ? '#f59e0b' : '#3b82f6'} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {cards.map(card => (
