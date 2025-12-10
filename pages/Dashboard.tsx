@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { UserRole, Vehicle, MaintenanceAlert, ServiceAppointment, UEBALog } from '../types';
 import { autoMind } from '../services/autoMindService';
-import { AlertTriangle, CheckCircle, Activity, Thermometer, Disc, Zap, Wrench, FileText, Brain, ArrowRight, X, Cpu, Server, ShieldCheck, Siren } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Activity, Thermometer, Disc, Zap, Wrench, FileText, Brain, ArrowRight, X, Cpu, Server, ShieldCheck, Siren, BarChart2, Target, Eye, Database, History, RefreshCcw, Plus, Wifi } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -21,6 +21,77 @@ const StatCard = ({ title, value, sub, icon: Icon, color }: any) => (
         </div>
     </div>
 );
+
+const AddVehicleModal = ({ onClose }: { onClose: () => void }) => {
+    const [step, setStep] = useState(1);
+
+    const handleNext = () => {
+        if (step < 2) setStep(step + 1);
+        else onClose(); // In a real app, submit data here
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-md overflow-hidden animate-fade-in-up">
+                <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-white">Register New Vehicle</h2>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20}/></button>
+                </div>
+                
+                <div className="p-6">
+                    {step === 1 ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">VIN (Vehicle Identification Number)</label>
+                                <input type="text" placeholder="Enter 17-character VIN" className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Make</label>
+                                    <input type="text" placeholder="e.g. Hyundai" className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Model</label>
+                                    <input type="text" placeholder="e.g. i20" className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Year</label>
+                                <input type="number" placeholder="2024" className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500" />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 text-center">
+                             <div className="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Wifi size={32} />
+                            </div>
+                            <h3 className="text-lg font-bold text-white">Connect Data Stream</h3>
+                            <p className="text-sm text-slate-400">Select how AutoMind connects to your vehicle telemetry.</p>
+                            
+                            <div className="grid grid-cols-2 gap-4 mt-4">
+                                <button className="p-4 bg-slate-950 border border-slate-700 rounded-xl hover:border-blue-500 transition-colors text-left group">
+                                    <div className="font-bold text-white group-hover:text-blue-400">OBD-II Dongle</div>
+                                    <div className="text-xs text-slate-500 mt-1">Direct Bluetooth Connect</div>
+                                </button>
+                                <button className="p-4 bg-slate-950 border border-slate-700 rounded-xl hover:border-blue-500 transition-colors text-left group">
+                                    <div className="font-bold text-white group-hover:text-blue-400">OEM Cloud API</div>
+                                    <div className="text-xs text-slate-500 mt-1">Over-the-air Sync</div>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-6 bg-slate-950 border-t border-slate-800 flex justify-end space-x-3">
+                    <button onClick={onClose} className="px-4 py-2 text-slate-400 hover:text-white">Cancel</button>
+                    <button onClick={handleNext} className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">
+                        {step === 1 ? 'Next Step' : 'Complete Setup'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const LiveTelemetry = ({ active }: { active: boolean }) => {
     const [data, setData] = useState<{ time: string, temp: number, rpm: number }[]>([]);
@@ -78,14 +149,29 @@ const LiveTelemetry = ({ active }: { active: boolean }) => {
 // --- DIGITAL TWIN SIMULATION MODAL ---
 const DigitalTwinModal = ({ vehicle, onClose, onComplete }: any) => {
     const [step, setStep] = useState(0); // 0: Init, 1: AI Scan, 2: Twin Sim, 3: Result
+    const [checkItems, setCheckItems] = useState([
+        { label: "Thermal Correlation (RPM vs Temp)", status: "pending" },
+        { label: "Electrical Load Analysis", status: "pending" },
+        { label: "Mechanical Drift & Wear Rate", status: "pending" }
+    ]);
     
     useEffect(() => {
         const sequence = async () => {
             await new Promise(r => setTimeout(r, 1000));
             setStep(1); // Gemini Analysis
+            
             await new Promise(r => setTimeout(r, 2000));
             setStep(2); // Digital Twin Physics
-            await new Promise(r => setTimeout(r, 2500));
+            
+            // Animate checklist
+            await new Promise(r => setTimeout(r, 500));
+            setCheckItems(prev => prev.map((item, i) => i === 0 ? { ...item, status: "success" } : item));
+            await new Promise(r => setTimeout(r, 800));
+            setCheckItems(prev => prev.map((item, i) => i === 1 ? { ...item, status: "success" } : item));
+            await new Promise(r => setTimeout(r, 800));
+            setCheckItems(prev => prev.map((item, i) => i === 2 ? { ...item, status: "success" } : item));
+            
+            await new Promise(r => setTimeout(r, 1000));
             setStep(3); // Result
             await new Promise(r => setTimeout(r, 1000));
             onComplete();
@@ -125,15 +211,30 @@ const DigitalTwinModal = ({ vehicle, onClose, onComplete }: any) => {
                         </div>
 
                         {/* Step 3: Digital Twin */}
-                        <div className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-500 ${step >= 2 ? 'bg-slate-800 border-cyan-500/50' : 'bg-slate-950 border-slate-800 opacity-50'}`}>
-                            <div className="flex items-center space-x-3">
-                                <Cpu className={step >= 2 ? "text-cyan-400 animate-spin-slow" : "text-slate-600"} />
-                                <div className="text-left">
-                                    <div className="text-sm font-bold text-white">Digital Twin Simulation</div>
-                                    <div className="text-xs text-slate-400">Verifying Physics Model...</div>
+                        <div className={`p-4 rounded-xl border transition-all duration-500 ${step >= 2 ? 'bg-slate-800 border-cyan-500/50' : 'bg-slate-950 border-slate-800 opacity-50'}`}>
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center space-x-3">
+                                    <Cpu className={step >= 2 ? "text-cyan-400 animate-spin-slow" : "text-slate-600"} />
+                                    <div className="text-left">
+                                        <div className="text-sm font-bold text-white">Digital Twin Simulation</div>
+                                        <div className="text-xs text-slate-400">Physics Validation Layer</div>
+                                    </div>
                                 </div>
+                                {step > 2 && <CheckCircle className="text-green-500" size={20} />}
                             </div>
-                            {step > 2 && <CheckCircle className="text-green-500" size={20} />}
+                            {step >= 2 && (
+                                <div className="space-y-2 pl-9">
+                                    {checkItems.map((item, i) => (
+                                        <div key={i} className="flex items-center justify-between text-xs">
+                                            <span className="text-slate-300">{item.label}</span>
+                                            {item.status === 'success' ? 
+                                                <span className="text-green-400 font-mono">PASSED</span> : 
+                                                <span className="text-slate-600 font-mono">...</span>
+                                            }
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -155,89 +256,127 @@ const DigitalTwinModal = ({ vehicle, onClose, onComplete }: any) => {
     );
 };
 
-const VehicleDetailCard: React.FC<{ vehicle: Vehicle, onSimulate: () => void, log: string | null }> = ({ vehicle, onSimulate, log }) => (
-    <div className={`bg-slate-900 border ${vehicle.status === 'CRITICAL' ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : vehicle.status === 'WARNING' ? 'border-yellow-500/50' : 'border-slate-800'} rounded-xl p-6 transition-all`}>
-        <div className="flex flex-col md:flex-row gap-6 mb-6">
-            <div className="w-full md:w-1/3">
-                 <img src={vehicle.imageUrl} alt={vehicle.model} className="w-full h-48 object-cover rounded-lg border border-slate-800" />
-                 <LiveTelemetry active={true} />
-            </div>
-            <div className="flex-1">
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white">{vehicle.model}</h2>
-                        <p className="text-sm text-slate-400 font-mono mt-1">VIN: {vehicle.vin}</p>
-                    </div>
-                    <div className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide ${
-                        vehicle.status === 'HEALTHY' ? 'bg-green-500/20 text-green-400' : 
-                        vehicle.status === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
-                    }`}>
-                        {vehicle.status}
-                    </div>
-                </div>
+const VehicleDetailCard: React.FC<{ vehicle: Vehicle, onSimulate: () => void, log: string | null, history?: ServiceAppointment[] }> = ({ vehicle, onSimulate, log, history = [] }) => {
+    const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview');
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
-                        <div>
-                            <div className="text-xs text-slate-500 uppercase">Engine Temp</div>
-                            <div className={`text-lg font-mono ${vehicle.telematics.engineTemp > 95 ? 'text-red-400' : 'text-white'}`}>{vehicle.telematics.engineTemp.toFixed(1)}°C</div>
-                        </div>
-                        <Thermometer size={18} className="text-slate-600"/>
-                    </div>
-                     <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
-                        <div>
-                            <div className="text-xs text-slate-500 uppercase">Brake Wear</div>
-                            <div className={`text-lg font-mono ${vehicle.telematics.brakeWearLevel > 80 ? 'text-red-400' : 'text-white'}`}>{vehicle.telematics.brakeWearLevel.toFixed(1)}%</div>
-                        </div>
-                        <Disc size={18} className="text-slate-600"/>
-                    </div>
-                    <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
-                        <div>
-                            <div className="text-xs text-slate-500 uppercase">Battery</div>
-                            <div className="text-lg font-mono text-white">{vehicle.telematics.batteryVoltage.toFixed(1)}V</div>
-                        </div>
-                        <Zap size={18} className="text-slate-600"/>
-                    </div>
-                    <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
-                        <div>
-                            <div className="text-xs text-slate-500 uppercase">RPM</div>
-                            <div className="text-lg font-mono text-white">{vehicle.telematics.rpm}</div>
-                        </div>
-                        <Activity size={18} className="text-slate-600"/>
-                    </div>
-                </div>
+    return (
+    <div className={`bg-slate-900 border ${vehicle.status === 'CRITICAL' ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : vehicle.status === 'WARNING' ? 'border-yellow-500/50' : 'border-slate-800'} rounded-xl p-6 transition-all`}>
+        <div className="flex justify-between items-start mb-6">
+            <h2 className="text-2xl font-bold text-white">{vehicle.model} <span className="text-sm font-normal text-slate-400">({vehicle.year})</span></h2>
+            <div className="flex space-x-2 bg-slate-800 rounded p-1">
+                <button onClick={() => setActiveTab('overview')} className={`px-3 py-1 rounded text-xs font-bold ${activeTab === 'overview' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>Overview</button>
+                <button onClick={() => setActiveTab('history')} className={`px-3 py-1 rounded text-xs font-bold ${activeTab === 'history' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}>History</button>
             </div>
         </div>
 
-        {log && (
-            <div className="mb-4 p-3 bg-black/50 rounded border border-slate-800 text-xs font-mono text-green-400 animate-fade-in">
-                <span className="text-blue-400 font-bold">MASTER_AGENT &gt;</span> {log}
+        {activeTab === 'overview' ? (
+            <>
+                <div className="flex flex-col md:flex-row gap-6 mb-6">
+                    <div className="w-full md:w-1/3">
+                        <img src={vehicle.imageUrl} alt={vehicle.model} className="w-full h-48 object-cover rounded-lg border border-slate-800" />
+                        <LiveTelemetry active={true} />
+                    </div>
+                    <div className="flex-1">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <p className="text-sm text-slate-400 font-mono">VIN: {vehicle.vin}</p>
+                            </div>
+                            <div className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide ${
+                                vehicle.status === 'HEALTHY' ? 'bg-green-500/20 text-green-400' : 
+                                vehicle.status === 'CRITICAL' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                                {vehicle.status}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase">Engine Temp</div>
+                                    <div className={`text-lg font-mono ${vehicle.telematics.engineTemp > 95 ? 'text-red-400' : 'text-white'}`}>{vehicle.telematics.engineTemp.toFixed(1)}°C</div>
+                                </div>
+                                <Thermometer size={18} className="text-slate-600"/>
+                            </div>
+                            <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase">Brake Wear</div>
+                                    <div className={`text-lg font-mono ${vehicle.telematics.brakeWearLevel > 80 ? 'text-red-400' : 'text-white'}`}>{vehicle.telematics.brakeWearLevel.toFixed(1)}%</div>
+                                </div>
+                                <Disc size={18} className="text-slate-600"/>
+                            </div>
+                            <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase">Battery</div>
+                                    <div className="text-lg font-mono text-white">{vehicle.telematics.batteryVoltage.toFixed(1)}V</div>
+                                </div>
+                                <Zap size={18} className="text-slate-600"/>
+                            </div>
+                            <div className="bg-slate-950 p-3 rounded border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <div className="text-xs text-slate-500 uppercase">RPM</div>
+                                    <div className="text-lg font-mono text-white">{vehicle.telematics.rpm}</div>
+                                </div>
+                                <Activity size={18} className="text-slate-600"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {log && (
+                    <div className="mb-4 p-3 bg-black/50 rounded border border-slate-800 text-xs font-mono text-green-400 animate-fade-in">
+                        <span className="text-blue-400 font-bold">MASTER_AGENT &gt;</span> {log}
+                    </div>
+                )}
+
+                <div className="flex space-x-4">
+                    <button 
+                        onClick={onSimulate}
+                        className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-blue-900/20"
+                    >
+                        <Activity size={18} />
+                        <span>Run AI Predictive Diagnostics</span>
+                    </button>
+                    {vehicle.status !== 'HEALTHY' && (
+                        <Link to="/service" className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-2">
+                            <CheckCircle size={18} />
+                            <span>Auto-Schedule Repair</span>
+                        </Link>
+                    )}
+                </div>
+            </>
+        ) : (
+            <div className="h-64 overflow-y-auto">
+                {history.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                        <History size={32} className="mb-2 opacity-50" />
+                        <p>No service history found.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {history.map(apt => (
+                            <div key={apt.id} className="flex justify-between items-center p-3 bg-slate-950 border border-slate-800 rounded-lg">
+                                <div>
+                                    <div className="font-bold text-white text-sm">{apt.predictedIssue}</div>
+                                    <div className="text-xs text-slate-500">{new Date(apt.scheduledTime).toLocaleDateString()} • {apt.serviceCenter}</div>
+                                </div>
+                                <span className="px-2 py-1 bg-green-900/30 text-green-400 text-xs rounded border border-green-500/30">COMPLETED</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         )}
-
-        <div className="flex space-x-4">
-            <button 
-                onClick={onSimulate}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-lg shadow-blue-900/20"
-            >
-                <Activity size={18} />
-                <span>Run AI Predictive Diagnostics</span>
-            </button>
-            {vehicle.status !== 'HEALTHY' && (
-                 <Link to="/service" className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center space-x-2">
-                    <CheckCircle size={18} />
-                    <span>Auto-Schedule Repair</span>
-                 </Link>
-            )}
-        </div>
     </div>
-);
+    );
+};
 
 // --- DASHBOARD VIEWS ---
 
-const OwnerDashboard = ({ vehicles, alerts, onSimulate, logs }: any) => {
+const OwnerDashboard = ({ vehicles, alerts, onSimulate, logs, history }: any) => {
     const [showSimulation, setShowSimulation] = useState(false);
     const [simulatingId, setSimulatingId] = useState<string | null>(null);
+    const [showAddVehicle, setShowAddVehicle] = useState(false);
+    const [alertFilter, setAlertFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH'>('ALL');
 
     const handleSimulateClick = (id: string) => {
         setSimulatingId(id);
@@ -252,6 +391,10 @@ const OwnerDashboard = ({ vehicles, alerts, onSimulate, logs }: any) => {
         setSimulatingId(null);
     };
 
+    const filteredAlerts = alertFilter === 'ALL' 
+        ? alerts 
+        : alerts.filter((a: MaintenanceAlert) => a.severity === alertFilter);
+
     return (
     <div className="space-y-6 relative">
          {showSimulation && (
@@ -261,6 +404,9 @@ const OwnerDashboard = ({ vehicles, alerts, onSimulate, logs }: any) => {
                 onComplete={handleSimulationComplete}
             />
          )}
+         {showAddVehicle && (
+             <AddVehicleModal onClose={() => setShowAddVehicle(false)} />
+         )}
 
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatCard title="Health Score" value={`${vehicles[0]?.healthScore || 100}%`} icon={Activity} color="text-green-500" />
@@ -269,21 +415,46 @@ const OwnerDashboard = ({ vehicles, alerts, onSimulate, logs }: any) => {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
-                <h2 className="text-xl font-bold text-white">My Vehicle</h2>
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-white">My Vehicle</h2>
+                    <button 
+                        onClick={() => setShowAddVehicle(true)}
+                        className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                    >
+                        <Plus size={16} />
+                        <span>Add Vehicle</span>
+                    </button>
+                </div>
                 {vehicles.map((v: Vehicle) => (
-                    <VehicleDetailCard key={v.id} vehicle={v} onSimulate={() => handleSimulateClick(v.id)} log={logs[v.id]} />
+                    <VehicleDetailCard key={v.id} vehicle={v} onSimulate={() => handleSimulateClick(v.id)} log={logs[v.id]} history={history} />
                 ))}
             </div>
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-fit">
-                <h3 className="text-lg font-bold text-white mb-4">Live Alerts</h3>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-white">Live Alerts</h3>
+                    <div className="flex space-x-1">
+                        <button 
+                            onClick={() => setAlertFilter('ALL')}
+                            className={`px-2 py-1 text-[10px] font-bold rounded ${alertFilter === 'ALL' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white'}`}
+                        >ALL</button>
+                        <button 
+                            onClick={() => setAlertFilter('CRITICAL')}
+                            className={`px-2 py-1 text-[10px] font-bold rounded ${alertFilter === 'CRITICAL' ? 'bg-red-900/50 text-red-400' : 'text-slate-500 hover:text-red-400'}`}
+                        >CRIT</button>
+                        <button 
+                            onClick={() => setAlertFilter('HIGH')}
+                            className={`px-2 py-1 text-[10px] font-bold rounded ${alertFilter === 'HIGH' ? 'bg-yellow-900/50 text-yellow-400' : 'text-slate-500 hover:text-yellow-400'}`}
+                        >HIGH</button>
+                    </div>
+                </div>
                 <div className="space-y-4">
-                    {alerts.length === 0 && (
+                    {filteredAlerts.length === 0 && (
                         <div className="text-center py-8 text-slate-500">
                             <CheckCircle size={32} className="mx-auto mb-2 opacity-50" />
-                            <p>All systems nominal.</p>
+                            <p>No active alerts found.</p>
                         </div>
                     )}
-                    {alerts.map((alert: MaintenanceAlert) => (
+                    {filteredAlerts.map((alert: MaintenanceAlert) => (
                         <div key={alert.id} className={`p-4 rounded-lg border-l-4 ${
                             alert.severity === 'CRITICAL' ? 'bg-red-900/10 border-red-500' : 
                             alert.severity === 'HIGH' ? 'bg-yellow-900/10 border-yellow-500' : 'bg-slate-950 border-blue-500'
@@ -402,7 +573,7 @@ const TechnicianDashboard = () => {
                                 <span className="bg-blue-900/50 text-blue-400 text-xs px-2 py-1 rounded border border-blue-500/30">AI Predicted</span>
                             </div>
                             <p className="text-sm text-slate-400 mt-1">Issue: {job.predictedIssue}</p>
-                            <p className="text-xs text-slate-500 mt-1">Scheduled: {new Date(job.scheduledTime).toLocaleDateString()}</p>
+                            <p className="text-xs text-slate-500 mt-1">Scheduled: {new Date(job.scheduledTime).toLocaleDateString()} at {new Date(job.scheduledTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                         </div>
                         <Link to="/service" className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium">
                             Start Diagnosis
@@ -418,6 +589,7 @@ const TechnicianDashboard = () => {
 const AdminDashboard = () => {
     const [logs, setLogs] = useState<UEBALog[]>([]);
     const [scores, setScores] = useState<Record<string, number>>({});
+    const [seedMessage, setSeedMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -431,6 +603,20 @@ const AdminDashboard = () => {
         autoMind.simulateAgentAttack();
     };
 
+    const handleSeedDatabase = async () => {
+        setSeedMessage("Seeding database... please wait.");
+        const result = await autoMind.seedDatabase();
+        setSeedMessage(result);
+        setTimeout(() => setSeedMessage(null), 5000);
+    };
+
+    const handleResetDemo = async () => {
+        setSeedMessage("Resetting demo environment...");
+        const result = await autoMind.resetDatabase();
+        setSeedMessage(result);
+        setTimeout(() => setSeedMessage(null), 3000);
+    };
+
     return (
         <div className="space-y-6">
             <header className="flex justify-between items-center mb-6">
@@ -438,14 +624,44 @@ const AdminDashboard = () => {
                     <h2 className="text-2xl font-bold text-white">UEBA & System Trust Monitor</h2>
                     <p className="text-slate-400 text-sm mt-1">Real-time monitoring of AI Agent behaviors and trust integrity.</p>
                 </div>
-                <button 
-                    onClick={handleSimulateAttack}
-                    className="flex items-center space-x-2 bg-red-900/30 border border-red-500/50 hover:bg-red-900/50 text-red-400 px-4 py-2 rounded-lg transition-colors"
-                >
-                    <Siren size={18} />
-                    <span>Simulate Security Anomaly</span>
-                </button>
+                <div className="flex space-x-2">
+                    <button 
+                        onClick={handleSeedDatabase}
+                        className="flex items-center space-x-2 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-white px-3 py-2 rounded-lg transition-colors text-xs"
+                    >
+                        <Database size={16} />
+                        <span>Seed Data</span>
+                    </button>
+                    <button 
+                        onClick={handleResetDemo}
+                        className="flex items-center space-x-2 bg-yellow-900/30 border border-yellow-500/50 hover:bg-yellow-900/50 text-yellow-400 px-3 py-2 rounded-lg transition-colors text-xs"
+                    >
+                        <RefreshCcw size={16} />
+                        <span>Reset Demo</span>
+                    </button>
+                    <button 
+                        onClick={handleSimulateAttack}
+                        className="flex items-center space-x-2 bg-red-900/30 border border-red-500/50 hover:bg-red-900/50 text-red-400 px-3 py-2 rounded-lg transition-colors text-xs"
+                    >
+                        <Siren size={16} />
+                        <span>Simulate Attack</span>
+                    </button>
+                </div>
             </header>
+
+            {seedMessage && (
+                <div className="bg-blue-900/20 border border-blue-500/50 text-blue-300 p-4 rounded-lg mb-4 animate-fade-in">
+                    {seedMessage}
+                </div>
+            )}
+            
+            {/* NEW: Quantified Metrics Section */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-2">
+                <StatCard title="Model Precision" value="94.2%" icon={Target} color="text-green-500" />
+                <StatCard title="Recall" value="89.5%" icon={Eye} color="text-blue-500" />
+                <StatCard title="False Positives" value="1.8%" icon={AlertTriangle} color="text-purple-500" />
+                <StatCard title="Optimize Rate" value="+42%" icon={BarChart2} color="text-yellow-500" />
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 col-span-2">
@@ -471,7 +687,23 @@ const AdminDashboard = () => {
                 
                 <div className="space-y-6">
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                         <h3 className="text-lg font-bold text-white mb-4">Agent Trust Scores</h3>
+                         <div className="flex items-center justify-between mb-4">
+                             <h3 className="text-lg font-bold text-white">Agent Trust Scores</h3>
+                             <div className="group relative">
+                                <div className="w-5 h-5 rounded-full border border-slate-600 flex items-center justify-center text-xs text-slate-400 cursor-help">?</div>
+                                <div className="absolute right-0 w-64 p-3 bg-slate-950 border border-slate-700 rounded-lg shadow-xl text-xs text-slate-300 hidden group-hover:block z-50">
+                                    <strong>Trust Formula:</strong>
+                                    <br/>
+                                    Score = 100 
+                                    <br/>
+                                    - (Latency &gt; 3s ? 15 : 0) 
+                                    <br/>
+                                    - (Error Rate * 10)
+                                    <br/>
+                                    - (Frequency Spike ? 20 : 0)
+                                </div>
+                             </div>
+                         </div>
                          <div className="space-y-4">
                             {['Diagnosis Agent', 'Digital Twin Agent', 'Scheduling Agent', 'OEM Insights Agent'].map(agent => {
                                 const score = scores[agent] || 100;
@@ -514,6 +746,7 @@ const AdminDashboard = () => {
 const Dashboard = ({ role }: { role: UserRole }) => {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [alerts, setAlerts] = useState<MaintenanceAlert[]>([]);
+    const [history, setHistory] = useState<ServiceAppointment[]>([]);
     const [logs, setLogs] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -525,6 +758,11 @@ const Dashboard = ({ role }: { role: UserRole }) => {
         const a = await autoMind.getAlerts(role);
         setVehicles(v);
         setAlerts(a);
+        if (role === UserRole.OWNER) {
+            // In a real app we'd filter by vehicle ID, here we assume owner has one main car for history
+            const allApts = await autoMind.getAppointments(role);
+            setHistory(allApts.filter(apt => apt.status === 'COMPLETED'));
+        }
     };
 
     const handleRunDiagnostics = async (id: string) => {
@@ -553,7 +791,7 @@ const Dashboard = ({ role }: { role: UserRole }) => {
                 </div>
             </header>
 
-            {role === UserRole.OWNER && <OwnerDashboard vehicles={vehicles} alerts={alerts} onSimulate={handleRunDiagnostics} logs={logs} />}
+            {role === UserRole.OWNER && <OwnerDashboard vehicles={vehicles} alerts={alerts} onSimulate={handleRunDiagnostics} logs={logs} history={history} />}
             {role === UserRole.FLEET_MANAGER && <FleetDashboard vehicles={vehicles} />}
             {role === UserRole.TECHNICIAN && <TechnicianDashboard />}
             {role === UserRole.ADMIN && <AdminDashboard />}

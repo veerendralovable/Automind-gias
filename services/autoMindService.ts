@@ -1,10 +1,10 @@
-import { UserRole, Vehicle, VehicleStatus, MaintenanceAlert, ServiceAppointment, LearningCard, UEBALog, ClusterAnalysis } from "../types";
+import { UserRole, Vehicle, VehicleStatus, MaintenanceAlert, ServiceAppointment, LearningCard, UEBALog, ClusterAnalysis, InventoryItem, ChatMessage, Invoice } from "../types";
 import { DiagnosisAgent, OemInsightsAgent } from "./geminiService";
 import { DigitalTwin } from "../lib/digitalTwin";
 import { UEBA } from "../lib/ueba";
 import { supabase } from "../lib/supabaseClient";
 
-// --- STORY-DRIVEN MOCK DATA ---
+// --- STORY-DRIVEN MOCK DATA (FALLBACK) ---
 
 // 1. RAHUL (Owner) - Hyundai i20
 const RAHUL_VEHICLE: Vehicle = {
@@ -20,9 +20,7 @@ const RAHUL_VEHICLE: Vehicle = {
 };
 
 // 2. KAVYA (Fleet Manager) - Delhivery Fleet
-// Generating 9 At-Risk Vehicles + some healthy ones
 const FLEET_RISK_VEHICLES: Vehicle[] = [
-  // 4 Turbo Overheating (Tata Ace)
   ...Array.from({ length: 4 }).map((_, i) => ({
     id: `fleet-tata-${i}`,
     vin: `DL-03-142${i + 2}`,
@@ -34,7 +32,6 @@ const FLEET_RISK_VEHICLES: Vehicle[] = [
     imageUrl: 'https://imgd.aeplcdn.com/1056x594/n/cw/ec/135805/ace-gold-exterior-right-front-three-quarter-3.jpeg?isig=0&q=75',
     telematics: { speed: 30, rpm: 3500, engineTemp: 112, batteryVoltage: 12.1, brakeWearLevel: 40, timestamp: new Date().toISOString() }
   })),
-  // 2 Brake Pad Issues (Ashok Leyland)
   ...Array.from({ length: 2 }).map((_, i) => ({
     id: `fleet-al-${i}`,
     vin: `DL-03-155${i}`,
@@ -46,7 +43,6 @@ const FLEET_RISK_VEHICLES: Vehicle[] = [
     imageUrl: 'https://imgd.aeplcdn.com/1056x594/n/cw/ec/145899/bada-dost-exterior-right-front-three-quarter-2.jpeg?isig=0&q=75',
     telematics: { speed: 50, rpm: 1800, engineTemp: 88, batteryVoltage: 12.6, brakeWearLevel: 89, timestamp: new Date().toISOString() }
   })),
-  // 3 Battery Degradation (Mahindra Bolero)
   ...Array.from({ length: 3 }).map((_, i) => ({
     id: `fleet-mah-${i}`,
     vin: `DL-03-166${i}`,
@@ -60,7 +56,6 @@ const FLEET_RISK_VEHICLES: Vehicle[] = [
   })),
 ];
 
-// Generate ~50 healthy vehicles for bulk view
 const FLEET_HEALTHY_VEHICLES: Vehicle[] = Array.from({ length: 50 }).map((_, i) => ({
   id: `fleet-h-${i}`,
   vin: `DL-03-900${i}`,
@@ -75,7 +70,6 @@ const FLEET_HEALTHY_VEHICLES: Vehicle[] = Array.from({ length: 50 }).map((_, i) 
 
 const KAVYA_FLEET = [...FLEET_RISK_VEHICLES, ...FLEET_HEALTHY_VEHICLES];
 
-// 3. ARJUN (Technician) - Assigned Job
 const ARJUN_JOBS: ServiceAppointment[] = [
   {
     id: 'job-101',
@@ -89,21 +83,28 @@ const ARJUN_JOBS: ServiceAppointment[] = [
   }
 ];
 
-// 4. PRIYA (OEM) - Learning Cards & Clusters
 const PRIYA_CARDS: LearningCard[] = [
   { id: 'lc-1', vehicleModel: 'Tata Ace Gold', faultType: 'Turbocharger Overheating', rootCause: 'Oil feed line clogging due to residue build-up', fixSummary: 'Cleaned oil lines, replaced turbo bearing', occurrenceCount: 4, generatedAt: new Date(Date.now() - 86400000).toISOString() },
   { id: 'lc-2', vehicleModel: 'Hyundai i20', faultType: 'Premature Brake Wear', rootCause: 'Vendor batch 19A friction material defect', fixSummary: 'Replaced brake pads with ceramic compound', occurrenceCount: 31, generatedAt: new Date(Date.now() - 172800000).toISOString() },
 ];
 
+const SERVICE_INVENTORY: InventoryItem[] = [
+    { id: 'inv-1', name: 'Ceramic Brake Pad Set', sku: 'BP-HYU-2023', category: 'Brakes', quantity: 45, threshold: 20, status: 'IN_STOCK', price: 1200 },
+    { id: 'inv-2', name: 'Turbocharger Assembly', sku: 'TB-TATA-ACE', category: 'Engine', quantity: 2, threshold: 5, status: 'LOW_STOCK', price: 15000 },
+    { id: 'inv-3', name: 'Synthetic Oil (5W-30)', sku: 'OIL-SYN-5L', category: 'Fluids', quantity: 120, threshold: 30, status: 'IN_STOCK', price: 3500 },
+    { id: 'inv-4', name: 'Oil Filter', sku: 'FLT-OIL-GEN', category: 'Filters', quantity: 5, threshold: 10, status: 'LOW_STOCK', price: 450 },
+    { id: 'inv-5', name: 'Alternator 12V', sku: 'ALT-MAH-BOL', category: 'Electrical', quantity: 0, threshold: 3, status: 'OUT_OF_STOCK', price: 8500 },
+];
+
 export class AutoMindService {
   
-  private vehicles: Vehicle[] = [RAHUL_VEHICLE, ...KAVYA_FLEET];
-  private alerts: MaintenanceAlert[] = [];
-  private appointments: ServiceAppointment[] = [...ARJUN_JOBS];
-  private learningCards: LearningCard[] = [...PRIYA_CARDS];
-  private uebaLogs: UEBALog[] = [];
+  private mockVehicles: Vehicle[] = [RAHUL_VEHICLE, ...KAVYA_FLEET];
+  private mockAlerts: MaintenanceAlert[] = [];
+  private mockAppointments: ServiceAppointment[] = [...ARJUN_JOBS];
+  private mockLearningCards: LearningCard[] = [...PRIYA_CARDS];
+  private mockInventory: InventoryItem[] = [...SERVICE_INVENTORY];
+  private mockInvoices: Invoice[] = [];
   
-  // New: Agent Trust Scores State for Demo
   private agentTrustScores: Record<string, number> = {
     'Diagnosis Agent': 99,
     'Digital Twin Agent': 98,
@@ -111,19 +112,12 @@ export class AutoMindService {
     'OEM Insights Agent': 95
   };
 
+  private uebaLogs: UEBALog[] = [];
+  private chatSubscription: any = null;
+
   constructor() {
     this.initRealtimeSubscription();
-    // Seed initial alerts for Kavya's fleet
     this.seedFleetAlerts();
-    // Seed initial UEBA log
-    this.uebaLogs.push({
-        id: 'ueba-init',
-        agentName: 'System',
-        action: 'System Boot Sequence',
-        trustScore: 100,
-        timestamp: new Date().toISOString(),
-        status: 'NORMAL'
-    });
   }
 
   private seedFleetAlerts() {
@@ -133,7 +127,7 @@ export class AutoMindService {
       if (v.model.includes('Dost')) alertType = 'Brake Pad Wear';
       if (v.model.includes('Bolero')) alertType = 'Battery Degradation';
       
-      this.alerts.push({
+      this.mockAlerts.push({
         id: `alert-${v.id}`,
         vehicleId: v.id,
         alertType,
@@ -148,44 +142,425 @@ export class AutoMindService {
   }
 
   private initRealtimeSubscription() {
+    // Listen for DB changes
     supabase.channel('automind-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_alerts' }, (payload) => {
-        this.fetchAlerts(); 
+        console.log("Realtime Alert:", payload);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'vehicles' }, (payload) => {
+        console.log("Realtime Vehicle Update:", payload);
       })
       .subscribe();
   }
 
-  async getVehicles(role: UserRole): Promise<Vehicle[]> {
-    // Role-based filtering for Demo Story
-    if (role === UserRole.OWNER) return [this.vehicles[0]]; // Rahul gets only his i20
-    if (role === UserRole.FLEET_MANAGER) return this.vehicles.slice(1); // Kavya gets the fleet
-    return this.vehicles;
+  // --- CHAT SYSTEM (BROADCAST) ---
+  
+  subscribeToChat(callback: (msg: ChatMessage) => void) {
+      this.chatSubscription = supabase.channel('automind-global-chat')
+        .on('broadcast', { event: 'message' }, (payload) => {
+            callback(payload.payload as ChatMessage);
+        })
+        .subscribe();
   }
 
-  async fetchAlerts() {
-    const { data } = await supabase.from('maintenance_alerts').select('*').order('created_at', { ascending: false });
-    if (data && data.length > 0) {
-        // Merge real DB alerts with mock alerts if DB is empty
+  async sendChatMessage(message: ChatMessage) {
+      await supabase.channel('automind-global-chat')
+        .send({
+            type: 'broadcast',
+            event: 'message',
+            payload: message
+        });
+  }
+
+  /**
+   * SEED DATABASE FUNCTION
+   * Pushes the Story Data (Rahul, Kavya, etc.) into Supabase if empty.
+   */
+  async seedDatabase(): Promise<string> {
+    try {
+        console.log("Checking DB status...");
+        const { count } = await supabase.from('vehicles').select('*', { count: 'exact', head: true });
+        
+        if (count && count > 0) {
+            return "Database already has data. Skipping seed.";
+        }
+
+        console.log("Seeding Vehicles...");
+        const dbVehicles = this.mockVehicles.map(v => ({
+            id: v.id,
+            vin: v.vin,
+            model: v.model,
+            year: v.year,
+            owner_id: v.ownerId,
+            status: v.status,
+            health_score: v.healthScore,
+            image_url: v.imageUrl,
+            telematics: v.telematics
+        }));
+        await supabase.from('vehicles').insert(dbVehicles);
+
+        console.log("Seeding Alerts...");
+        const dbAlerts = this.mockAlerts.map(a => ({
+            id: a.id,
+            vehicle_id: a.vehicleId,
+            alert_type: a.alertType,
+            severity: a.severity,
+            confidence: a.confidence,
+            description: a.description,
+            recommended_action: a.recommendedAction,
+            status: a.status,
+            created_at: a.timestamp
+        }));
+        await supabase.from('maintenance_alerts').insert(dbAlerts);
+
+        console.log("Seeding Appointments...");
+        const dbApts = this.mockAppointments.map(a => ({
+            id: a.id,
+            vehicle_id: a.vehicleId,
+            vehicle_model: a.vehicleModel,
+            technician_id: a.technicianId,
+            scheduled_time: a.scheduledTime,
+            status: a.status,
+            service_center: a.serviceCenter,
+            predicted_issue: a.predictedIssue
+        }));
+        await supabase.from('service_appointments').insert(dbApts);
+
+        console.log("Seeding Inventory...");
+        await supabase.from('inventory').insert(this.mockInventory);
+
+        return "Database Seeded Successfully! Refreshing...";
+    } catch (e: any) {
+        console.error("Seeding Error:", e);
+        return `Error seeding DB: ${e.message}`;
+    }
+  }
+
+  async resetDatabase(): Promise<string> {
+    try {
+        // Clear Appointments (except seed ones if you wanted, but for demo we clear NEW ones)
+        // Here we clear everything except the seed data logically, but for simplicity we wipe tables that change
+        await supabase.from('service_appointments').delete().neq('id', 'job-101'); 
+        await supabase.from('maintenance_alerts').delete().neq('status', 'NEW'); // Keep initial alerts
+        
+        // Reset local mocks
+        this.mockAppointments = [...ARJUN_JOBS];
+        this.mockAlerts = [];
+        this.seedFleetAlerts();
+        
+        return "Demo Data Reset Complete.";
+    } catch (e: any) {
+        return `Error resetting: ${e.message}`;
+    }
+  }
+
+  // --- DATA FETCHING (Hybrid: DB first, Mock fallback) ---
+
+  async getVehicles(role: UserRole): Promise<Vehicle[]> {
+    try {
+        const { data, error } = await supabase.from('vehicles').select('*');
+        if (error || !data || data.length === 0) throw new Error("Fallback to mock");
+        
+        // Map snake_case to camelCase
+        const dbVehicles: Vehicle[] = data.map((v: any) => ({
+            id: v.id,
+            vin: v.vin,
+            model: v.model,
+            year: v.year,
+            ownerId: v.owner_id,
+            status: v.status as VehicleStatus,
+            healthScore: v.health_score,
+            imageUrl: v.image_url || 'https://via.placeholder.com/300',
+            telematics: v.telematics || { speed: 0, rpm: 0, engineTemp: 0, batteryVoltage: 0, brakeWearLevel: 0, timestamp: new Date().toISOString() }
+        }));
+
+        if (role === UserRole.OWNER) return dbVehicles.filter(v => v.ownerId === 'rahul');
+        if (role === UserRole.FLEET_MANAGER) return dbVehicles.filter(v => v.ownerId === 'kavya');
+        return dbVehicles;
+
+    } catch (e) {
+        if (role === UserRole.OWNER) return [this.mockVehicles[0]];
+        if (role === UserRole.FLEET_MANAGER) return this.mockVehicles.slice(1);
+        return this.mockVehicles;
     }
   }
 
   async getAlerts(role: UserRole): Promise<MaintenanceAlert[]> {
-    if (role === UserRole.OWNER) return this.alerts.filter(a => a.vehicleId === RAHUL_VEHICLE.id);
-    if (role === UserRole.FLEET_MANAGER) return this.alerts.filter(a => a.vehicleId.startsWith('fleet'));
-    return this.alerts;
+    try {
+        const { data, error } = await supabase.from('maintenance_alerts').select('*').order('created_at', { ascending: false });
+        if (error || !data || data.length === 0) throw new Error("Fallback to mock");
+        
+        const dbAlerts: MaintenanceAlert[] = data.map((a: any) => ({
+            id: a.id,
+            vehicleId: a.vehicle_id,
+            alertType: a.alert_type,
+            severity: a.severity,
+            confidence: a.confidence,
+            description: a.description,
+            recommendedAction: a.recommended_action,
+            status: a.status,
+            timestamp: a.created_at
+        }));
+
+        if (role === UserRole.OWNER) return dbAlerts.filter(a => a.vehicleId === RAHUL_VEHICLE.id); // In DB needs matching ID
+        return dbAlerts;
+    } catch (e) {
+        if (role === UserRole.OWNER) return this.mockAlerts.filter(a => a.vehicleId === RAHUL_VEHICLE.id);
+        if (role === UserRole.FLEET_MANAGER) return this.mockAlerts.filter(a => a.vehicleId.startsWith('fleet'));
+        return this.mockAlerts;
+    }
   }
 
   async getAppointments(role: UserRole): Promise<ServiceAppointment[]> {
-    return this.appointments;
+    try {
+        const { data, error } = await supabase.from('service_appointments').select('*').order('scheduled_time', { ascending: true });
+        if (error || !data || data.length === 0) throw new Error("Fallback");
+        return data.map((a: any) => ({
+            id: a.id,
+            vehicleId: a.vehicle_id,
+            vehicleModel: a.vehicle_model,
+            technicianId: a.technician_id,
+            scheduledTime: a.scheduled_time,
+            status: a.status,
+            serviceCenter: a.service_center,
+            predictedIssue: a.predicted_issue
+        }));
+    } catch (e) {
+        return this.mockAppointments;
+    }
   }
 
   async getLearningCards(): Promise<LearningCard[]> {
-    return this.learningCards;
+    try {
+        const { data, error } = await supabase.from('learning_cards').select('*');
+        if (error || !data || data.length === 0) throw new Error("Fallback");
+        return data.map((c: any) => ({
+            id: c.id,
+            vehicleModel: c.vehicle_model,
+            faultType: c.fault_type,
+            rootCause: c.root_cause,
+            fixSummary: c.fix_summary,
+            occurrenceCount: c.occurrence_count,
+            generatedAt: c.generated_at,
+            clusterId: c.cluster_id
+        }));
+    } catch(e) {
+        return this.mockLearningCards;
+    }
   }
-  
-  // NEW: Generate Cluster Stats for OEM Charts
+
+  async getInventory(): Promise<InventoryItem[]> {
+      try {
+          const { data, error } = await supabase.from('inventory').select('*');
+          if (error || !data || data.length === 0) throw new Error("Fallback");
+          return data;
+      } catch (e) {
+          return this.mockInventory;
+      }
+  }
+
+  async getFleetFinancials(): Promise<{monthly: any[], savings: number, totalSpend: number}> {
+      // Mock financial projection based on fleet size
+      return {
+          monthly: [
+              { name: 'May', spend: 4000, savings: 1200 },
+              { name: 'Jun', spend: 3500, savings: 1500 },
+              { name: 'Jul', spend: 5000, savings: 1000 },
+              { name: 'Aug', spend: 3200, savings: 2100 },
+              { name: 'Sep', spend: 2800, savings: 2400 },
+              { name: 'Oct', spend: 2500, savings: 2800 },
+          ],
+          savings: 12400,
+          totalSpend: 21000
+      };
+  }
+
+  async createInvoice(appointmentId: string, partsUsed: {id: string, qty: number}[]): Promise<Invoice> {
+    const apt = this.mockAppointments.find(a => a.id === appointmentId);
+    const vehicle = this.mockVehicles.find(v => v.id === apt?.vehicleId);
+    
+    const items: any[] = [];
+    let totalParts = 0;
+
+    // Calculate parts cost
+    partsUsed.forEach(p => {
+        const invItem = this.mockInventory.find(i => i.id === p.id);
+        if (invItem) {
+            const cost = invItem.price * p.qty;
+            items.push({ description: invItem.name, cost: invItem.price, quantity: p.qty });
+            totalParts += cost;
+        }
+    });
+
+    // Calculate labor cost (Standard 2 hours for demo)
+    const laborHours = 2; 
+    const laborRate = 85;
+    const totalLabor = laborHours * laborRate;
+    items.push({ description: 'Technician Labor (Standard Rate)', cost: laborRate, quantity: laborHours });
+
+    const invoice: Invoice = {
+        id: `inv-${Date.now()}`,
+        appointmentId,
+        vehicleId: apt?.vehicleId || 'unknown',
+        customerName: vehicle?.ownerId || 'Unknown Customer',
+        items,
+        totalParts,
+        totalLabor,
+        totalAmount: totalParts + totalLabor,
+        status: 'PENDING',
+        generatedAt: new Date().toISOString()
+    };
+
+    this.mockInvoices.push(invoice);
+    // In a real app, save to Supabase here
+    return invoice;
+  }
+
+  // --- ACTIONS WITH HYBRID PERSISTENCE ---
+
+  async runPredictiveCycle(vehicleId: string): Promise<{ vehicle: Vehicle, alert: MaintenanceAlert | null, log: string }> {
+    const startTime = Date.now();
+    
+    // Find vehicle (prefer mock for demo predictability if ID matches)
+    let vehicle = this.mockVehicles.find(v => v.id === vehicleId);
+    
+    // STORY LOGIC: Force the scenario
+    let newTelematics = vehicle ? { ...vehicle.telematics } : { speed: 45, rpm: 2100, engineTemp: 92, batteryVoltage: 12.4, brakeWearLevel: 87, timestamp: new Date().toISOString() };
+    
+    if (vehicleId === 'rahul-i20') {
+        newTelematics.brakeWearLevel = 88; 
+    } 
+
+    const diagStart = Date.now();
+    const prediction = await DiagnosisAgent.analyzeTelematics(vehicle?.model || 'Unknown', newTelematics);
+    this.logUEBA('Diagnosis Agent', 'Analyze Telematics', Date.now() - diagStart);
+
+    let newAlert: MaintenanceAlert | null = null;
+    let logMsg = "Routine scan complete. Systems nominal.";
+
+    if (prediction) {
+      const twinStart = Date.now();
+      const twinResult = await DigitalTwin.simulateVehicle(vehicle?.model || 'Unknown', newTelematics);
+      this.logUEBA('Digital Twin Agent', 'Physics Simulation', Date.now() - twinStart);
+
+      const isValid = twinResult.anomalyDetected || vehicleId === 'rahul-i20';
+
+      if (isValid) {
+        newAlert = {
+            id: `alert-${Date.now()}`,
+            vehicleId: vehicleId,
+            alertType: prediction.alertType || 'Unknown',
+            severity: prediction.severity || 'LOW',
+            confidence: prediction.confidence || 0.85,
+            description: prediction.description || 'Anomaly detected',
+            recommendedAction: prediction.recommendedAction || 'Inspect',
+            status: 'NEW',
+            timestamp: new Date().toISOString()
+        } as MaintenanceAlert;
+
+        // Persist to Mock
+        this.mockAlerts.unshift(newAlert);
+        if (vehicle) {
+            vehicle.status = newAlert.severity === 'CRITICAL' ? VehicleStatus.CRITICAL : VehicleStatus.WARNING;
+            vehicle.healthScore = Math.max(0, vehicle.healthScore - 20);
+        }
+
+        // Persist to DB (Fire & Forget)
+        supabase.from('maintenance_alerts').insert({
+            vehicle_id: vehicleId,
+            alert_type: newAlert.alertType,
+            severity: newAlert.severity,
+            confidence: newAlert.confidence,
+            description: newAlert.description,
+            recommended_action: newAlert.recommendedAction,
+            status: 'NEW'
+        }).then(({ error }) => { if (error) console.error("DB Insert Failed (Demo Mode active)", error); });
+
+        logMsg = `CONFIRMED: ${prediction.alertType}. Digital Twin Validation Passed.`;
+      }
+    }
+
+    return { vehicle: vehicle!, alert: newAlert, log: logMsg };
+  }
+
+  async scheduleService(vehicleId: string, center: string): Promise<ServiceAppointment> {
+    const newApt: ServiceAppointment = {
+        id: `apt-${Date.now()}`,
+        vehicleId,
+        vehicleModel: 'Hyundai i20',
+        scheduledTime: new Date(Date.now() + 86400000).toISOString(),
+        status: 'CONFIRMED',
+        serviceCenter: center,
+        predictedIssue: 'Scheduled via AutoMind'
+    };
+
+    this.mockAppointments.push(newApt);
+    
+    // DB
+    supabase.from('service_appointments').insert({
+        vehicle_id: vehicleId,
+        vehicle_model: 'Hyundai i20',
+        scheduled_time: newApt.scheduledTime,
+        status: 'CONFIRMED',
+        service_center: center,
+        predicted_issue: 'Scheduled via AutoMind'
+    }).then();
+
+    return newApt;
+  }
+
+  async bulkScheduleRepair(vehicleIds: string[]): Promise<void> {
+    const slots = [
+        { hour: 9, min: 0, bay: 'Bay 1' }, { hour: 9, min: 30, bay: 'Bay 2' },
+        { hour: 11, min: 0, bay: 'Bay 1' }, { hour: 11, min: 30, bay: 'Bay 2' },
+        { hour: 14, min: 0, bay: 'Bay 1' }, { hour: 14, min: 30, bay: 'Bay 2' },
+        { hour: 16, min: 0, bay: 'Bay 1' }
+    ];
+
+    const dbPayloads: any[] = [];
+
+    vehicleIds.forEach((id, index) => {
+        const v = this.mockVehicles.find(veh => veh.id === id);
+        if (v) {
+            v.status = VehicleStatus.IN_SERVICE;
+            const slot = slots[index % slots.length];
+            const appointmentDate = new Date();
+            appointmentDate.setDate(appointmentDate.getDate() + Math.floor(index / slots.length) + 1);
+            appointmentDate.setHours(slot.hour, slot.min, 0, 0);
+
+            const apt = {
+                id: `apt-bulk-${Date.now()}-${index}`,
+                vehicleId: id,
+                vehicleModel: v.model,
+                technicianId: 'arjun',
+                scheduledTime: appointmentDate.toISOString(),
+                status: 'CONFIRMED',
+                serviceCenter: `AutoMind Fleet Hub - ${slot.bay}`,
+                predictedIssue: 'Bulk Fleet Maintenance'
+            } as ServiceAppointment;
+            
+            this.mockAppointments.push(apt);
+            
+            dbPayloads.push({
+                vehicle_id: id,
+                vehicle_model: v.model,
+                technician_id: 'arjun',
+                scheduled_time: appointmentDate.toISOString(),
+                status: 'CONFIRMED',
+                service_center: apt.serviceCenter,
+                predicted_issue: 'Bulk Fleet Maintenance'
+            });
+        }
+    });
+
+    if (dbPayloads.length > 0) {
+        supabase.from('service_appointments').insert(dbPayloads).then();
+    }
+  }
+
+  // --- MOCK HELPERS (Keep these for visual consistency in OEM/Admin) ---
+
   async getClusterStats(): Promise<ClusterAnalysis[]> {
-    // Mock aggregation logic based on the cards
     return [
       { id: 'c-1', faultType: 'Premature Brake Wear', vehicleModel: 'Hyundai i20', count: 31, severity: 'HIGH', vendorBatch: '19A' },
       { id: 'c-2', faultType: 'Turbocharger Overheating', vehicleModel: 'Tata Ace Gold', count: 22, severity: 'CRITICAL' },
@@ -201,16 +576,12 @@ export class AutoMindService {
   async getAgentTrustScores(): Promise<Record<string, number>> {
     return this.agentTrustScores;
   }
-  
-  // NEW: Simulate Attack for Admin Story
+
   async simulateAgentAttack() {
       const agent = 'Scheduling Agent';
       const action = 'Unauthorized Data Access Attempt';
-      const duration = 5000; // Anomaly: High Latency
-      
+      const duration = 5000;
       const { score, status } = UEBA.analyzeBehavior(agent, action, duration);
-      
-      // Force a drop for the demo story
       const attackScore = 62; 
       this.agentTrustScores[agent] = attackScore;
 
@@ -222,131 +593,17 @@ export class AutoMindService {
         timestamp: new Date().toISOString(),
         status: 'ANOMALY'
       });
-      
       return { success: true };
   }
-
-  // --- MASTER AGENT WORKFLOW ---
-
-  async runPredictiveCycle(vehicleId: string): Promise<{ vehicle: Vehicle, alert: MaintenanceAlert | null, log: string }> {
-    const startTime = Date.now();
-    const vehicle = this.vehicles.find(v => v.id === vehicleId);
-    if (!vehicle) throw new Error("Vehicle not found");
-
-    // STORY LOGIC: If it's Rahul's i20, trigger the "Brake Pad" scenario
-    let newTelematics = { ...vehicle.telematics };
-    
-    if (vehicleId === 'rahul-i20') {
-        newTelematics.brakeWearLevel = 88; // Critical threshold
-        newTelematics.engineTemp = 94; // Slightly high but normal
-    } else {
-        newTelematics.engineTemp += (Math.random() * 10 - 2); 
-    }
-    
-    vehicle.telematics = newTelematics;
-
-    // 1. DIAGNOSIS AGENT
-    const diagStart = Date.now();
-    const prediction = await DiagnosisAgent.analyzeTelematics(vehicle.model, newTelematics);
-    this.logUEBA('Diagnosis Agent', 'Analyze Telematics', Date.now() - diagStart);
-
-    let newAlert: MaintenanceAlert | null = null;
-    let logMsg = "Routine scan complete. Systems nominal.";
-
-    if (prediction) {
-      // 2. DIGITAL TWIN AGENT
-      const twinStart = Date.now();
-      const twinResult = await DigitalTwin.simulateVehicle(vehicle.model, newTelematics);
-      this.logUEBA('Digital Twin Agent', 'Physics Simulation', Date.now() - twinStart);
-
-      // Force validation for Demo Story
-      const isValid = twinResult.anomalyDetected || vehicleId === 'rahul-i20';
-
-      if (isValid) {
-        newAlert = {
-            id: `alert-${Date.now()}`,
-            vehicleId: vehicle.id,
-            alertType: prediction.alertType || 'Unknown',
-            severity: prediction.severity || 'LOW',
-            confidence: prediction.confidence || 0.85,
-            description: prediction.description || 'Anomaly detected',
-            recommendedAction: prediction.recommendedAction || 'Inspect',
-            status: 'NEW',
-            timestamp: new Date().toISOString()
-        } as MaintenanceAlert;
-
-        this.alerts.unshift(newAlert);
-        
-        // Update vehicle status
-        if (newAlert.severity === 'CRITICAL' || newAlert.severity === 'HIGH') {
-            vehicle.status = newAlert.severity === 'CRITICAL' ? VehicleStatus.CRITICAL : VehicleStatus.WARNING;
-            vehicle.healthScore = Math.max(0, vehicle.healthScore - 20);
-        }
-
-        logMsg = `CONFIRMED: ${prediction.alertType}. Digital Twin Validation Passed.`;
-      } else {
-          logMsg = `Prediction suppressed by Digital Twin. Physics model mismatch.`;
-      }
-    }
-
-    return { vehicle, alert: newAlert, log: logMsg };
-  }
-
-  async scheduleService(vehicleId: string, center: string): Promise<ServiceAppointment> {
-    const schedStart = Date.now();
-    const vehicle = this.vehicles.find(v => v.id === vehicleId);
-    
-    const newApt: ServiceAppointment = {
-        id: `apt-${Date.now()}`,
-        vehicleId,
-        vehicleModel: vehicle?.model || 'Unknown',
-        scheduledTime: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-        status: 'CONFIRMED',
-        serviceCenter: center,
-        predictedIssue: 'Scheduled via AutoMind'
-    };
-
-    this.appointments.push(newApt);
-    if (vehicle) vehicle.status = VehicleStatus.IN_SERVICE;
-
-    this.logUEBA('Scheduling Agent', 'Book Appointment', Date.now() - schedStart);
-    return newApt;
-  }
   
-  // NEW: Bulk Scheduling Logic for Fleet Manager
-  async bulkScheduleRepair(vehicleIds: string[]): Promise<void> {
-    const start = Date.now();
-    
-    vehicleIds.forEach((id, index) => {
-        const v = this.vehicles.find(veh => veh.id === id);
-        if (v) {
-            v.status = VehicleStatus.IN_SERVICE;
-            // Create a job for Arjun
-            this.appointments.push({
-                id: `apt-bulk-${Date.now()}-${index}`,
-                vehicleId: id,
-                vehicleModel: v.model,
-                technicianId: 'arjun',
-                scheduledTime: new Date(Date.now() + 86400000 + (index * 3600000)).toISOString(), // Staggered by 1 hour
-                status: 'CONFIRMED',
-                serviceCenter: 'AutoMind Fleet Hub - Bay 1',
-                predictedIssue: 'Bulk Fleet Maintenance'
-            });
-        }
-    });
+  async completeRepairJob(appointmentId: string, notes: string, partsUsed: {id: string, qty: number}[] = []): Promise<Invoice> {
+    const apt = this.mockAppointments.find(a => a.id === appointmentId);
+    let invoice;
 
-    this.logUEBA('Scheduling Agent', 'Bulk Schedule Optimization', Date.now() - start);
-  }
-
-  async completeRepairJob(appointmentId: string, notes: string): Promise<void> {
-    const oemStart = Date.now();
-    
-    const apt = this.appointments.find(a => a.id === appointmentId);
     if (apt) {
         apt.status = 'COMPLETED';
         const insight = await OemInsightsAgent.generateLearningCard(notes, apt.vehicleModel, apt.predictedIssue || 'Maintenance');
-        
-        this.learningCards.unshift({
+        this.mockLearningCards.unshift({
             id: `lc-${Date.now()}`,
             vehicleModel: apt.vehicleModel,
             faultType: insight.faultType,
@@ -355,26 +612,60 @@ export class AutoMindService {
             occurrenceCount: 1,
             generatedAt: new Date().toISOString()
         });
-    }
+        
+        // DB
+        supabase.from('learning_cards').insert({
+            vehicle_model: apt.vehicleModel,
+            fault_type: insight.faultType,
+            root_cause: insight.rootCause,
+            fix_summary: insight.fixSummary,
+            occurrence_count: 1
+        }).then();
 
-    this.logUEBA('OEM Insights Agent', 'Generate Learning Card', Date.now() - oemStart);
+        // GENERATE INVOICE
+        invoice = await this.createInvoice(appointmentId, partsUsed);
+    }
+    return invoice!;
+  }
+  
+  async deductPart(partId: string, quantity: number): Promise<InventoryItem | undefined> {
+      const item = this.mockInventory.find(i => i.id === partId);
+      if (item) {
+          item.quantity = Math.max(0, item.quantity - quantity);
+          if (item.quantity === 0) item.status = 'OUT_OF_STOCK';
+          else if (item.quantity <= item.threshold) item.status = 'LOW_STOCK';
+          
+          // DB
+          supabase.from('inventory').update({ quantity: item.quantity, status: item.status }).eq('id', partId).then();
+      }
+      return item;
+  }
+
+  async restockPart(partId: string): Promise<InventoryItem | undefined> {
+      const item = this.mockInventory.find(i => i.id === partId);
+      if (item) {
+          item.quantity += 50; 
+          item.status = 'IN_STOCK';
+          supabase.from('inventory').update({ quantity: item.quantity, status: 'IN_STOCK' }).eq('id', partId).then();
+      }
+      return item;
   }
 
   getVoiceContext() {
-    const criticalVehicle = this.vehicles.find(v => v.status === VehicleStatus.CRITICAL || v.status === VehicleStatus.WARNING);
-    return {
-        vehicleStatus: criticalVehicle?.status || 'HEALTHY',
-        alertCount: this.alerts.length,
-        latestAlert: this.alerts[0]?.alertType
-    };
+      // Default context for the demo (focusing on the Owner persona)
+      const vehicle = this.mockVehicles[0]; 
+      const alerts = this.mockAlerts.filter(a => a.vehicleId === vehicle.id);
+
+      return {
+          vehicleStatus: vehicle ? vehicle.status : 'UNKNOWN',
+          alertCount: alerts.length,
+          latestAlert: alerts.length > 0 ? alerts[0].alertType : null
+      };
   }
 
   private logUEBA(agent: string, action: string, duration: number) {
     const { score, status } = UEBA.analyzeBehavior(agent, action, duration);
-    
-    // Update the live map for the dashboard
     this.agentTrustScores[agent] = score;
-
     this.uebaLogs.unshift({
         id: `ueba-${Date.now()}`,
         agentName: agent,

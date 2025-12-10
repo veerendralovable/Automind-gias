@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-key';
+const supabaseUrl = 'https://bqmpaawqmstfajvbpmqf.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbXBhYXdxbXN0ZmFqdmJwbXFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUzMzUyNjYsImV4cCI6MjA4MDkxMTI2Nn0.N54Awbqa4VLdlVg8-AvEkq5P0O1GAoLw9XilojTgguM';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 

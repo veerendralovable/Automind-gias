@@ -90,3 +90,36 @@ export interface UEBALog {
   timestamp: string;
   status: 'NORMAL' | 'ANOMALY';
 }
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  sku: string;
+  category: string;
+  quantity: number;
+  threshold: number;
+  status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+  price: number;
+}
+
+export interface Invoice {
+  id: string;
+  appointmentId: string;
+  vehicleId: string;
+  customerName: string;
+  items: { description: string, cost: number, quantity: number }[];
+  totalLabor: number;
+  totalParts: number;
+  totalAmount: number;
+  status: 'PAID' | 'PENDING';
+  generatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: string;
+  role: UserRole;
+  text: string;
+  timestamp: string;
+  isMe?: boolean; // Helper for UI
+}
