@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { UserRole, Vehicle, MaintenanceAlert, ServiceAppointment, UEBALog } from '../types';
 import { autoMind } from '../services/autoMindService';
-import { AlertTriangle, CheckCircle, Activity, Thermometer, Disc, Zap, Wrench, FileText, Brain, ArrowRight, X, Cpu, Server, ShieldCheck, Siren, BarChart2, Target, Eye, Database, History, RefreshCcw, Plus, Wifi } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Activity, Thermometer, Disc, Zap, Wrench, FileText, Brain, ArrowRight, X, Cpu, Server, ShieldCheck, Siren, BarChart2, Target, Eye, Database, History, RefreshCcw, Plus, Wifi, Layers, File, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -87,6 +87,104 @@ const AddVehicleModal = ({ onClose }: { onClose: () => void }) => {
                     <button onClick={handleNext} className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">
                         {step === 1 ? 'Next Step' : 'Complete Setup'}
                     </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- NEW FULL DETAILS MODAL ---
+const FullDetailsModal = ({ vehicle, history, onClose }: { vehicle: Vehicle, history: ServiceAppointment[], onClose: () => void }) => {
+    const [tab, setTab] = useState<'docs' | 'log'>('docs');
+
+    return (
+         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in-up">
+                <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900">
+                    <div>
+                        <h2 className="text-2xl font-bold text-white">{vehicle.model} - Details</h2>
+                        <p className="text-sm text-slate-400 font-mono">VIN: {vehicle.vin}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <div className="flex border-b border-slate-800">
+                    <button onClick={() => setTab('docs')} className={`flex-1 py-3 text-sm font-bold ${tab === 'docs' ? 'border-b-2 border-blue-500 text-white bg-slate-800/50' : 'text-slate-400 hover:text-white'}`}>Documents</button>
+                    <button onClick={() => setTab('log')} className={`flex-1 py-3 text-sm font-bold ${tab === 'log' ? 'border-b-2 border-blue-500 text-white bg-slate-800/50' : 'text-slate-400 hover:text-white'}`}>Telemetry Log</button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 bg-slate-950/50">
+                    {tab === 'docs' ? (
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold text-slate-400 uppercase mb-2">Registration & Insurance</h3>
+                            <div className="grid grid-cols-1 gap-3">
+                                <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between hover:border-slate-600 transition-colors cursor-pointer">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2 bg-blue-900/30 rounded text-blue-400"><File size={20} /></div>
+                                        <div>
+                                            <div className="font-bold text-white">Vehicle Registration</div>
+                                            <div className="text-xs text-slate-500">Expires: Dec 2025</div>
+                                        </div>
+                                    </div>
+                                    <ArrowRight size={16} className="text-slate-600" />
+                                </div>
+                                <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg flex items-center justify-between hover:border-slate-600 transition-colors cursor-pointer">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2 bg-green-900/30 rounded text-green-400"><Shield size={20} /></div>
+                                        <div>
+                                            <div className="font-bold text-white">Insurance Policy</div>
+                                            <div className="text-xs text-slate-500">Provider: Acko General</div>
+                                        </div>
+                                    </div>
+                                    <ArrowRight size={16} className="text-slate-600" />
+                                </div>
+                            </div>
+                            
+                            <h3 className="text-sm font-bold text-slate-400 uppercase mb-2 mt-6">Technical Specs</h3>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="p-3 bg-slate-900 rounded border border-slate-800">
+                                    <span className="text-slate-500 block mb-1">Engine Type</span>
+                                    <span className="text-white font-medium">1.2L Kappa Petrol</span>
+                                </div>
+                                <div className="p-3 bg-slate-900 rounded border border-slate-800">
+                                    <span className="text-slate-500 block mb-1">Transmission</span>
+                                    <span className="text-white font-medium">IVT Automatic</span>
+                                </div>
+                                <div className="p-3 bg-slate-900 rounded border border-slate-800">
+                                    <span className="text-slate-500 block mb-1">Chassis No</span>
+                                    <span className="text-white font-medium">MA382910029</span>
+                                </div>
+                                <div className="p-3 bg-slate-900 rounded border border-slate-800">
+                                    <span className="text-slate-500 block mb-1">Fuel Capacity</span>
+                                    <span className="text-white font-medium">37 Litres</span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <p className="text-xs text-slate-500 mb-2">Displaying last 24h of sync events.</p>
+                            <table className="w-full text-left text-xs">
+                                <thead className="text-slate-400 border-b border-slate-800">
+                                    <tr>
+                                        <th className="py-2">Time</th>
+                                        <th className="py-2">Event</th>
+                                        <th className="py-2">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-slate-300 divide-y divide-slate-800">
+                                    {[...Array(8)].map((_, i) => (
+                                        <tr key={i}>
+                                            <td className="py-3 font-mono">{new Date(Date.now() - i * 3600000).toLocaleTimeString()}</td>
+                                            <td className="py-3">Routine Telemetry Sync</td>
+                                            <td className="py-3"><span className="text-green-400">OK</span></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
@@ -258,8 +356,11 @@ const DigitalTwinModal = ({ vehicle, onClose, onComplete }: any) => {
 
 const VehicleDetailCard: React.FC<{ vehicle: Vehicle, onSimulate: () => void, log: string | null, history?: ServiceAppointment[] }> = ({ vehicle, onSimulate, log, history = [] }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'history'>('overview');
+    const [showFullDetails, setShowFullDetails] = useState(false);
 
     return (
+    <>
+    {showFullDetails && <FullDetailsModal vehicle={vehicle} history={history} onClose={() => setShowFullDetails(false)} />}
     <div className={`bg-slate-900 border ${vehicle.status === 'CRITICAL' ? 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : vehicle.status === 'WARNING' ? 'border-yellow-500/50' : 'border-slate-800'} rounded-xl p-6 transition-all`}>
         <div className="flex justify-between items-start mb-6">
             <h2 className="text-2xl font-bold text-white">{vehicle.model} <span className="text-sm font-normal text-slate-400">({vehicle.year})</span></h2>
@@ -275,6 +376,9 @@ const VehicleDetailCard: React.FC<{ vehicle: Vehicle, onSimulate: () => void, lo
                     <div className="w-full md:w-1/3">
                         <img src={vehicle.imageUrl} alt={vehicle.model} className="w-full h-48 object-cover rounded-lg border border-slate-800" />
                         <LiveTelemetry active={true} />
+                        <button onClick={() => setShowFullDetails(true)} className="w-full mt-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded flex items-center justify-center gap-2">
+                            <FileText size={12} /> View Full Details & Docs
+                        </button>
                     </div>
                     <div className="flex-1">
                         <div className="flex justify-between items-start mb-4">
@@ -367,6 +471,7 @@ const VehicleDetailCard: React.FC<{ vehicle: Vehicle, onSimulate: () => void, lo
             </div>
         )}
     </div>
+    </>
     );
 };
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { autoMind } from '../services/autoMindService';
-import { UserRole, Vehicle, VehicleStatus } from '../types';
-import { Search, Filter, MoreHorizontal, Calendar, DollarSign, TrendingUp, PieChart as PieIcon, LayoutGrid, ChevronDown } from 'lucide-react';
+import { UserRole, Vehicle, VehicleStatus, Driver } from '../types';
+import { Search, Filter, MoreHorizontal, Calendar, DollarSign, TrendingUp, PieChart as PieIcon, LayoutGrid, ChevronDown, Users, Phone, Award } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const BulkScheduleModal = ({ count, onClose }: { count: number, onClose: () => void }) => {
@@ -92,8 +92,76 @@ const FinancialDashboard = () => {
     );
 };
 
+const DriversList = () => {
+    const [drivers, setDrivers] = useState<Driver[]>([]);
+
+    useEffect(() => {
+        autoMind.getDrivers().then(setDrivers);
+    }, []);
+
+    return (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-fade-in">
+             <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                <h3 className="text-lg font-bold text-white">Personnel Management</h3>
+                <button className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded">
+                    Add Driver
+                </button>
+            </div>
+            <table className="w-full text-left">
+                <thead className="bg-slate-950 text-slate-400 text-xs uppercase tracking-wider">
+                    <tr>
+                        <th className="px-6 py-4">Name</th>
+                        <th className="px-6 py-4">License</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4">Safety Score</th>
+                        <th className="px-6 py-4">Contact</th>
+                        <th className="px-6 py-4">Action</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                    {drivers.map(d => (
+                        <tr key={d.id} className="hover:bg-slate-800/50 transition-colors">
+                            <td className="px-6 py-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">
+                                        {d.name.charAt(0)}
+                                    </div>
+                                    <span className="font-medium text-white">{d.name}</span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-400">{d.licenseNumber}</td>
+                            <td className="px-6 py-4">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                    d.status === 'ACTIVE' ? 'bg-green-900/50 text-green-400' :
+                                    d.status === 'ON_LEAVE' ? 'bg-yellow-900/50 text-yellow-400' : 'bg-slate-700 text-slate-400'
+                                }`}>
+                                    {d.status.replace('_', ' ')}
+                                </span>
+                            </td>
+                            <td className="px-6 py-4">
+                                <div className="flex items-center space-x-2">
+                                    <Award size={14} className={d.safetyScore > 90 ? "text-yellow-400" : "text-slate-500"} />
+                                    <span className={`font-bold ${d.safetyScore > 90 ? "text-white" : "text-slate-400"}`}>{d.safetyScore}</span>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-400 flex items-center gap-2">
+                                <Phone size={12} /> {d.contact}
+                            </td>
+                            <td className="px-6 py-4">
+                                <button className="text-slate-400 hover:text-white">
+                                    <MoreHorizontal size={18} />
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
 const Fleet = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'financials'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'financials' | 'drivers'>('overview');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -164,11 +232,20 @@ const Fleet = () => {
                     <DollarSign size={16} />
                     <span>Financials</span>
                 </button>
+                <button 
+                    onClick={() => setActiveTab('drivers')}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'drivers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                >
+                    <Users size={16} />
+                    <span>Drivers</span>
+                </button>
             </div>
         </div>
 
         {activeTab === 'financials' ? (
             <FinancialDashboard />
+        ) : activeTab === 'drivers' ? (
+            <DriversList />
         ) : (
             <>
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0 md:space-x-4">

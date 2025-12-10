@@ -1,4 +1,4 @@
-import { UserRole, Vehicle, VehicleStatus, MaintenanceAlert, ServiceAppointment, LearningCard, UEBALog, ClusterAnalysis, InventoryItem, ChatMessage, Invoice } from "../types";
+import { UserRole, Vehicle, VehicleStatus, MaintenanceAlert, ServiceAppointment, LearningCard, UEBALog, ClusterAnalysis, InventoryItem, ChatMessage, Invoice, Driver } from "../types";
 import { DiagnosisAgent, OemInsightsAgent } from "./geminiService";
 import { DigitalTwin } from "../lib/digitalTwin";
 import { UEBA } from "../lib/ueba";
@@ -96,6 +96,13 @@ const SERVICE_INVENTORY: InventoryItem[] = [
     { id: 'inv-5', name: 'Alternator 12V', sku: 'ALT-MAH-BOL', category: 'Electrical', quantity: 0, threshold: 3, status: 'OUT_OF_STOCK', price: 8500 },
 ];
 
+const MOCK_DRIVERS: Driver[] = [
+    { id: 'd-1', name: 'Vikram Singh', licenseNumber: 'DL-14202198982', status: 'ACTIVE', assignedVehicleId: 'fleet-tata-0', safetyScore: 92, contact: '+91 98765 43210' },
+    { id: 'd-2', name: 'Amit Kumar', licenseNumber: 'DL-09292838382', status: 'ON_LEAVE', safetyScore: 95, contact: '+91 91234 56789' },
+    { id: 'd-3', name: 'Rajesh Koothrappali', licenseNumber: 'DL-88282828281', status: 'ACTIVE', assignedVehicleId: 'fleet-tata-1', safetyScore: 78, contact: '+91 99887 76655' },
+    { id: 'd-4', name: 'Suresh Raina', licenseNumber: 'DL-11122233344', status: 'IDLE', safetyScore: 88, contact: '+91 88776 65544' },
+];
+
 export class AutoMindService {
   
   private mockVehicles: Vehicle[] = [RAHUL_VEHICLE, ...KAVYA_FLEET];
@@ -104,6 +111,7 @@ export class AutoMindService {
   private mockLearningCards: LearningCard[] = [...PRIYA_CARDS];
   private mockInventory: InventoryItem[] = [...SERVICE_INVENTORY];
   private mockInvoices: Invoice[] = [];
+  private mockDrivers: Driver[] = [...MOCK_DRIVERS];
   
   private agentTrustScores: Record<string, number> = {
     'Diagnosis Agent': 99,
@@ -373,6 +381,11 @@ export class AutoMindService {
           savings: 12400,
           totalSpend: 21000
       };
+  }
+
+  async getDrivers(): Promise<Driver[]> {
+    // In a real app, fetch from Supabase. Returning mock for now as requested.
+    return this.mockDrivers;
   }
 
   async createInvoice(appointmentId: string, partsUsed: {id: string, qty: number}[]): Promise<Invoice> {

@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Fleet from './pages/Fleet';
 import Service from './pages/Service';
 import OEM from './pages/OEM';
+import SettingsPage from './pages/Settings';
 import Login from './pages/Login';
 import { VoiceAssistant } from './components/VoiceAssistant';
 import { ChatWidget } from './components/ChatWidget';
@@ -46,6 +47,9 @@ const Sidebar = ({ role, onLogout }: { role: UserRole, onLogout: () => void }) =
         {(role === UserRole.OEM_ENGINEER || role === UserRole.ADMIN) && (
           <SidebarItem to="/oem" icon={Activity} label="OEM Insights" active={p === '/oem'} />
         )}
+        
+        <div className="my-4 border-t border-slate-800/50"></div>
+        <SidebarItem to="/settings" icon={Settings} label="Settings" active={p === '/settings'} />
       </nav>
 
       <div className="p-4 border-t border-slate-800">
@@ -85,6 +89,7 @@ const ProtectedLayout = ({ role, setRole }: { role: UserRole | null, setRole: (r
                     <Route path="/fleet" element={<Fleet />} />
                     <Route path="/service" element={<Service role={role} />} />
                     <Route path="/oem" element={<OEM />} />
+                    <Route path="/settings" element={<SettingsPage />} />
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </main>

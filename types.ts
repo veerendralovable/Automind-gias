@@ -123,3 +123,14 @@ export interface ChatMessage {
   timestamp: string;
   isMe?: boolean; // Helper for UI
 }
+
+export interface Driver {
+  id: string;
+  name: string;
+  licenseNumber: string;
+  status: 'ACTIVE' | 'IDLE' | 'ON_LEAVE';
+  assignedVehicleId?: string;
+  safetyScore: number; // 0-100
+  contact: string;
+  imageUrl?: string;
+}
