@@ -1,8 +1,27 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { TelematicsData, MaintenanceAlert } from "../types";
 
+// Helper to safely get API Key without crashing in browser
+const getApiKey = () => {
+  try {
+    // Check for Vite environment
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+      // @ts-ignore
+      return import.meta.env.VITE_API_KEY;
+    }
+    // Check for Node/Next.js/CRA environment
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.NEXT_PUBLIC_API_KEY || process.env.REACT_APP_API_KEY || process.env.API_KEY;
+    }
+  } catch (e) {
+    console.warn("Environment access error, defaulting to mock key");
+  }
+  return 'mock-key';
+};
+
 // Initialize Gemini
-const apiKey = process.env.API_KEY || 'mock-key'; 
+const apiKey = getApiKey();
 const ai = new GoogleGenAI({ apiKey });
 
 export const DiagnosisAgent = {
