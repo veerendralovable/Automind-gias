@@ -4,19 +4,22 @@ import { TelematicsData, MaintenanceAlert } from "../types";
 // Helper to safely get API Key without crashing in browser
 const getApiKey = () => {
   try {
-    // Check for Vite environment
+    // 1. Check for Vite (Standard in this project)
     // @ts-ignore
     if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
       // @ts-ignore
       return import.meta.env.VITE_API_KEY;
     }
-    // Check for Node/Next.js/CRA environment
-    if (typeof process !== 'undefined' && process.env) {
+    
+    // 2. Safe check for process.env (Next.js/Node) without causing ReferenceError
+    // Using typeof check prevents the crash if 'process' doesn't exist
+    if (typeof process !== 'undefined' && typeof process.env !== 'undefined') {
       return process.env.NEXT_PUBLIC_API_KEY || process.env.REACT_APP_API_KEY || process.env.API_KEY;
     }
   } catch (e) {
     console.warn("Environment access error, defaulting to mock key");
   }
+  // 3. Fallback to a safe mock key string to allow the app to boot
   return 'mock-key';
 };
 
