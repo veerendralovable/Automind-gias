@@ -2,6 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
+// --- CRITICAL POLYFILL FOR VERCEL/VITE ---
+// This prevents "ReferenceError: process is not defined" crashes in production
+if (typeof window !== 'undefined' && typeof (window as any).process === 'undefined') {
+  (window as any).process = { env: {} };
+}
+// -----------------------------------------
+
 interface ErrorBoundaryProps {
   children: React.ReactNode;
 }
@@ -45,6 +52,10 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             maxWidth: '800px',
             overflow: 'auto'
           }}>
+            <p style={{ color: '#94a3b8', marginBottom: '1rem' }}>
+              If you see "process is not defined", the polyfill in index.tsx is working to fix this. 
+              Please reload.
+            </p>
             <code style={{ fontFamily: 'monospace' }}>
               {this.state.error?.toString()}
             </code>
@@ -68,7 +79,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
-    return this.props.children;
+    // Fix: Cast this to any to avoid "Property 'props' does not exist on type 'ErrorBoundary'" error
+    return (this as any).props.children;
   }
 }
 

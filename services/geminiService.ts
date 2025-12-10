@@ -11,10 +11,9 @@ const getApiKey = () => {
       return import.meta.env.VITE_API_KEY;
     }
     
-    // 2. Safe check for process.env (Next.js/Node) without causing ReferenceError
-    // Using typeof check prevents the crash if 'process' doesn't exist
-    if (typeof process !== 'undefined' && typeof process.env !== 'undefined') {
-      return process.env.NEXT_PUBLIC_API_KEY || process.env.REACT_APP_API_KEY || process.env.API_KEY;
+    // 2. Safe check for process.env (Next.js/Node)
+    if (typeof window !== 'undefined' && (window as any).process && (window as any).process.env) {
+       return (window as any).process.env.NEXT_PUBLIC_API_KEY || (window as any).process.env.REACT_APP_API_KEY || (window as any).process.env.API_KEY;
     }
   } catch (e) {
     console.warn("Environment access error, defaulting to mock key");
@@ -23,9 +22,11 @@ const getApiKey = () => {
   return 'mock-key';
 };
 
-// Initialize Gemini
-const apiKey = getApiKey();
-const ai = new GoogleGenAI({ apiKey });
+// Helper to lazy-load AI instance only when needed
+const getAI = () => {
+  const apiKey = getApiKey();
+  return { ai: new GoogleGenAI({ apiKey }), apiKey };
+}
 
 export const DiagnosisAgent = {
   /**
@@ -33,6 +34,8 @@ export const DiagnosisAgent = {
    */
   analyzeTelematics: async (vehicleModel: string, data: TelematicsData): Promise<Partial<MaintenanceAlert> | null> => {
     try {
+      const { ai, apiKey } = getAI();
+      
       if (apiKey === 'mock-key') {
         throw new Error("No API Key"); // Force mock fallback if no key
       }
@@ -125,6 +128,7 @@ export const DigitalTwinAgent = {
     // In a real system, this would run a physics simulation.
     // We will use Gemini to "reason" about the physics.
     try {
+        const { ai, apiKey } = getAI();
         if (apiKey === 'mock-key') throw new Error("No Key");
         
         const prompt = `
@@ -169,6 +173,7 @@ export const OemInsightsAgent = {
    */
   generateLearningCard: async (notes: string, vehicleModel: string, issue: string): Promise<any> => {
     try {
+        const { ai, apiKey } = getAI();
         if (apiKey === 'mock-key') throw new Error("No Key");
 
         const prompt = `
@@ -215,6 +220,7 @@ export const VoiceInteractionAgent = {
    */
   chatWithDriver: async (message: string, context: any): Promise<{ text: string, emotion: 'NEUTRAL' | 'HAPPY' | 'CONCERNED' | 'ALERT' }> => {
     try {
+        const { ai, apiKey } = getAI();
         if (apiKey === 'mock-key') {
              // Mock response for demo without API key
              return {
