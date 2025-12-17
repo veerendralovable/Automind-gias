@@ -14,7 +14,8 @@ interface ErrorBoundaryState {
 }
 
 // Fixed class definition with explicit state property to resolve property access errors
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+// Added explicit inheritance from React.Component to ensure props and state are correctly typed and recognized by the compiler
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   public state: ErrorBoundaryState = { hasError: false, error: null };
 
   constructor(props: ErrorBoundaryProps) {
@@ -30,8 +31,11 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   render() {
-    // Correctly accessing state and props inherited from Component
-    if (this.state.hasError) {
+    // Destructuring state and props to avoid direct access issues and resolve TS property errors
+    const { hasError, error } = this.state;
+    const { children } = this.props;
+
+    if (hasError) {
       return (
         <div style={{ 
           padding: '2rem', 
@@ -57,7 +61,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
             textAlign: 'left'
           }}>
             <code style={{ fontFamily: 'monospace', fontSize: '0.9rem', color: '#fca5a5' }}>
-              {this.state.error?.message || "Unknown Runtime Error"}
+              {error?.message || "Unknown Runtime Error"}
             </code>
           </div>
           <button 
@@ -79,7 +83,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
 
-    return this.props.children;
+    return children;
   }
 }
 
