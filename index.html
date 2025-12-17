@@ -3,15 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <script>
-      // CRITICAL: Define process.env globally before any modules are loaded.
-      // This prevents "process is not defined" errors common in production bundles/CDNs.
+      // 1. CRITICAL: Define process.env globally before any modules are loaded.
       window.process = {
         env: {
           NODE_ENV: 'production',
-          API_KEY: '' // Will be injected by the environment
+          API_KEY: '' 
         },
         version: '',
         nextTick: function(fn) { setTimeout(fn, 0); }
+      };
+
+      // 2. EMERGENCY ERROR LOGGER: If the app fails to load, show why.
+      window.onerror = function(msg, url, lineNo, columnNo, error) {
+        const root = document.getElementById('root');
+        if (root && (root.innerHTML === '' || root.innerHTML.includes('Initializing'))) {
+          root.innerHTML = `
+            <div style="padding: 20px; color: #f87171; background: #1e293b; border: 1px solid #ef4444; margin: 20px; border-radius: 8px; font-family: monospace; line-height: 1.5;">
+              <h1 style="font-size: 18px; margin-bottom: 10px;">Critical Boot Error</h1>
+              <p style="font-size: 14px; color: #94a3b8;">${msg}</p>
+              <p style="font-size: 12px; margin-top: 10px; color: #64748b;">Line: ${lineNo}, Col: ${columnNo}</p>
+              <button onclick="location.reload()" style="margin-top: 15px; background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Retry Application</button>
+            </div>
+          `;
+        }
+        return false;
       };
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -20,22 +35,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #0f172a; /* Slate 950 - The "Blue" color user sees if app fails */
-        color: #f8fafc; /* Slate 50 */
+        background-color: #0f172a; 
+        color: #f8fafc;
         margin: 0;
         min-height: 100vh;
       }
-      /* Loading State */
       #root:empty::before {
         content: 'Initializing AutoMind Engine...';
         position: fixed;
@@ -52,90 +62,47 @@
         50% { opacity: 0.5; }
       }
       
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1e293b; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #475569; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #64748b; 
-      }
-      
-      /* Leaflet Custom Marker Styles */
-      .pulse-marker {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
+      .pulse-marker { display: flex; justify-content: center; align-items: center; }
       .pulse-dot {
-        width: 12px;
-        height: 12px;
-        background-color: #3b82f6;
-        border-radius: 50%;
-        position: relative;
-        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+        width: 12px; height: 12px; background-color: #3b82f6; border-radius: 50%;
+        position: relative; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
         animation: pulse-blue 2s infinite;
       }
       .pulse-dot::after {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: -4px;
-        right: -4px;
-        bottom: -4px;
-        border: 2px solid #ffffff;
-        border-radius: 50%;
+        content: ''; position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px;
+        border: 2px solid #ffffff; border-radius: 50%;
       }
       @keyframes pulse-blue {
-        0% {
-          transform: scale(0.95);
-          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-        }
-        70% {
-          transform: scale(1);
-          box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-        }
-        100% {
-          transform: scale(0.95);
-          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-        }
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
       }
-      
       .hub-marker {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        color: #ef4444;
-        background: rgba(15, 23, 42, 0.8);
-        border: 2px solid #ef4444;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
+        display: flex; justify-content: center; align-items: center; color: #ef4444;
+        background: rgba(15, 23, 42, 0.8); border: 2px solid #ef4444; border-radius: 50%;
+        width: 32px; height: 32px;
       }
     </style>
-  <script type="importmap">
+    <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.32.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.1",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.10.1",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.87.1"
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
+    "lucide-react": "https://esm.sh/lucide-react@0.454.0?deps=react@19.0.0",
+    "recharts": "https://esm.sh/recharts@2.13.0?deps=react@19.0.0",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.27.0?deps=react@19.0.0",
+    "@google/genai": "https://esm.sh/@google/genai@1.3.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.6",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
   }
 }
 </script>
-</head>
+  </head>
   <body>
     <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
   </body>
 </html>

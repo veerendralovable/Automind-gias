@@ -1,9 +1,7 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-
-// NOTE: process.env polyfill is now handled in index.html via script injection
-// This ensures it runs before module imports.
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -14,8 +12,14 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
+// Fixed ErrorBoundary class to correctly recognize state and props generics
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  public state: ErrorBoundaryState = { hasError: false, error: null };
+  // Explicitly declare state property to satisfy TypeScript compiler
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
@@ -26,6 +30,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   render() {
+    // Correctly accessing state property from the instance
     if (this.state.hasError) {
       return (
         <div style={{ 
@@ -37,22 +42,25 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           flexDirection: 'column', 
           justifyContent: 'center', 
           alignItems: 'center',
-          fontFamily: 'sans-serif'
+          fontFamily: 'sans-serif',
+          textAlign: 'center'
         }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Something went wrong.</h1>
+          <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Application Instance Error</h1>
           <div style={{ 
             padding: '1rem', 
             backgroundColor: '#1e293b', 
             borderRadius: '0.5rem', 
             border: '1px solid #334155',
-            maxWidth: '800px',
-            overflow: 'auto'
+            maxWidth: '600px',
+            width: '100%',
+            overflow: 'auto',
+            textAlign: 'left'
           }}>
-            <p style={{ color: '#94a3b8', marginBottom: '1rem' }}>
-              Application Crash Report
+            <p style={{ color: '#94a3b8', marginBottom: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+              Fault Signature
             </p>
-            <code style={{ fontFamily: 'monospace' }}>
-              {this.state.error?.toString()}
+            <code style={{ fontFamily: 'monospace', fontSize: '0.9rem', color: '#fca5a5' }}>
+              {this.state.error?.message || "Unknown Runtime Error"}
             </code>
           </div>
           <button 
@@ -68,26 +76,26 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               fontWeight: 'bold'
             }}
           >
-            Reload Application
+            Restart Engine
           </button>
         </div>
       );
     }
 
-    return (this as any).props.children;
+    // Fixed: Properly accessing props defined in the interface
+    return this.props.children;
   }
 }
 
 const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    // Providing App as a child ensures ErrorBoundaryProps is correctly satisfied
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-  </React.StrictMode>
-);
+  );
+} else {
+  console.error("Failed to find the root element");
+}

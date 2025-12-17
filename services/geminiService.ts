@@ -1,37 +1,9 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { TelematicsData, MaintenanceAlert } from "../types";
 
-// Helper to safely get API Key without crashing in browser
-const getApiKey = () => {
-  try {
-    // 1. Check for standard process.env (Injected by environment)
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-       return process.env.API_KEY;
-    }
-    
-    // 2. Check for window.process (Our HTML polyfill)
-    if (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) {
-       return (window as any).process.env.API_KEY;
-    }
-
-    // 3. Safe check for Next/Vite prefixed keys if they exist
-    const env = (window as any).process?.env || {};
-    return env.NEXT_PUBLIC_API_KEY || env.REACT_APP_API_KEY || env.VITE_API_KEY;
-
-  } catch (e) {
-    console.warn("Environment access error, defaulting to mock key");
-  }
-  return '';
-};
-
-// Helper to lazy-load AI instance only when needed
-const getAI = () => {
-  const apiKey = getApiKey();
-  // Ensure we don't pass an empty string to GoogleGenAI if it expects a valid format
-  // though typically it handles it, some versions might throw.
-  const effectiveKey = apiKey || 'invalid-key-placeholder';
-  return { ai: new GoogleGenAI({ apiKey: effectiveKey }), hasKey: !!apiKey };
-}
+// Note: API key must be obtained exclusively from process.env.API_KEY.
+// New GoogleGenAI instances are created right before making API calls.
 
 export const DiagnosisAgent = {
   /**
@@ -39,12 +11,9 @@ export const DiagnosisAgent = {
    */
   analyzeTelematics: async (vehicleModel: string, data: TelematicsData): Promise<Partial<MaintenanceAlert> | null> => {
     try {
-      const { ai, hasKey } = getAI();
+      // Correct initialization using process.env.API_KEY directly.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
       
-      if (!hasKey) {
-        throw new Error("Missing API Key"); // Jump to fallback
-      }
-
       const prompt = `
         Act as an expert automotive diagnostic AI. Analyze the following telematics data for a ${vehicleModel}.
         
@@ -78,6 +47,7 @@ export const DiagnosisAgent = {
         }
       });
 
+      // Correct method to extract text: use .text property (not a function).
       const result = JSON.parse(response.text || '{}');
 
       if (result.isAnomaly) {
@@ -93,7 +63,7 @@ export const DiagnosisAgent = {
 
     } catch (error) {
       console.warn("DiagnosisAgent falling back to heuristics:", error);
-      // Fallback Heuristic Logic (Simulation for Demo)
+      // Fallback Heuristic Logic
       if (data.engineTemp > 110) {
         return {
           alertType: "Engine Overheating",
@@ -132,8 +102,7 @@ export const DigitalTwinAgent = {
    */
   validateAnomaly: async (vehicleModel: string, data: TelematicsData, alert: Partial<MaintenanceAlert>): Promise<{ validated: boolean, reason: string }> => {
     try {
-        const { ai, hasKey } = getAI();
-        if (!hasKey) throw new Error("No Key");
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
         
         const prompt = `
             You are a Digital Twin Simulation Engine. 
@@ -161,7 +130,6 @@ export const DigitalTwinAgent = {
         });
         return JSON.parse(response.text || '{"validated": true, "reason": "Default validated"}');
     } catch (e) {
-        // Fallback Logic
         if (alert.alertType?.includes("Overheat") && data.engineTemp < 90) {
             return { validated: false, reason: "Temperature telemetry contradicts overheating prediction." };
         }
@@ -176,8 +144,7 @@ export const OemInsightsAgent = {
    */
   generateLearningCard: async (notes: string, vehicleModel: string, issue: string): Promise<any> => {
     try {
-        const { ai, hasKey } = getAI();
-        if (!hasKey) throw new Error("No Key");
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
         const prompt = `
             Analyze this repair report to create an OEM Learning Card.
@@ -218,13 +185,7 @@ export const VoiceInteractionAgent = {
    */
   chatWithDriver: async (message: string, context: any): Promise<{ text: string, emotion: 'NEUTRAL' | 'HAPPY' | 'CONCERNED' | 'ALERT' }> => {
     try {
-        const { ai, hasKey } = getAI();
-        if (!hasKey) {
-             return {
-                 text: "I can't connect to my brain right now, but your vehicle systems appear to be online.",
-                 emotion: 'NEUTRAL'
-             };
-        }
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
         const prompt = `
             You are AutoMind, an empathetic and professional AI vehicle assistant.
