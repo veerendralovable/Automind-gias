@@ -4,40 +4,45 @@ import { TelematicsData, MaintenanceAlert } from "../types";
 // Helper to safely get API Key without crashing in browser
 const getApiKey = () => {
   try {
-    // 1. Check for Vite (Standard in this project)
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
-      // @ts-ignore
-      return import.meta.env.VITE_API_KEY;
+    // 1. Check for standard process.env (Injected by environment)
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+       return process.env.API_KEY;
     }
     
-    // 2. Safe check for process.env (Next.js/Node)
-    if (typeof window !== 'undefined' && (window as any).process && (window as any).process.env) {
-       return (window as any).process.env.NEXT_PUBLIC_API_KEY || (window as any).process.env.REACT_APP_API_KEY || (window as any).process.env.API_KEY;
+    // 2. Check for window.process (Our HTML polyfill)
+    if (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) {
+       return (window as any).process.env.API_KEY;
     }
+
+    // 3. Safe check for Next/Vite prefixed keys if they exist
+    const env = (window as any).process?.env || {};
+    return env.NEXT_PUBLIC_API_KEY || env.REACT_APP_API_KEY || env.VITE_API_KEY;
+
   } catch (e) {
     console.warn("Environment access error, defaulting to mock key");
   }
-  // 3. Fallback to a safe mock key string to allow the app to boot
-  return 'mock-key';
+  return '';
 };
 
 // Helper to lazy-load AI instance only when needed
 const getAI = () => {
   const apiKey = getApiKey();
-  return { ai: new GoogleGenAI({ apiKey }), apiKey };
+  // Ensure we don't pass an empty string to GoogleGenAI if it expects a valid format
+  // though typically it handles it, some versions might throw.
+  const effectiveKey = apiKey || 'invalid-key-placeholder';
+  return { ai: new GoogleGenAI({ apiKey: effectiveKey }), hasKey: !!apiKey };
 }
 
 export const DiagnosisAgent = {
   /**
-   * Analyzes vehicle telematics to predict faults using Gemini 2.5 Flash
+   * Analyzes vehicle telematics to predict faults using Gemini 3 Flash
    */
   analyzeTelematics: async (vehicleModel: string, data: TelematicsData): Promise<Partial<MaintenanceAlert> | null> => {
     try {
-      const { ai, apiKey } = getAI();
+      const { ai, hasKey } = getAI();
       
-      if (apiKey === 'mock-key') {
-        throw new Error("No API Key"); // Force mock fallback if no key
+      if (!hasKey) {
+        throw new Error("Missing API Key"); // Jump to fallback
       }
 
       const prompt = `
@@ -55,7 +60,7 @@ export const DiagnosisAgent = {
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -73,7 +78,7 @@ export const DiagnosisAgent = {
         }
       });
 
-      const result = JSON.parse(response.text);
+      const result = JSON.parse(response.text || '{}');
 
       if (result.isAnomaly) {
         return {
@@ -87,6 +92,7 @@ export const DiagnosisAgent = {
       return null;
 
     } catch (error) {
+      console.warn("DiagnosisAgent falling back to heuristics:", error);
       // Fallback Heuristic Logic (Simulation for Demo)
       if (data.engineTemp > 110) {
         return {
@@ -125,11 +131,9 @@ export const DigitalTwinAgent = {
    * Simulates the vehicle state to validate if the anomaly is physically possible
    */
   validateAnomaly: async (vehicleModel: string, data: TelematicsData, alert: Partial<MaintenanceAlert>): Promise<{ validated: boolean, reason: string }> => {
-    // In a real system, this would run a physics simulation.
-    // We will use Gemini to "reason" about the physics.
     try {
-        const { ai, apiKey } = getAI();
-        if (apiKey === 'mock-key') throw new Error("No Key");
+        const { ai, hasKey } = getAI();
+        if (!hasKey) throw new Error("No Key");
         
         const prompt = `
             You are a Digital Twin Simulation Engine. 
@@ -138,12 +142,11 @@ export const DigitalTwinAgent = {
             Predicted Alert: ${alert.alertType} (${alert.description}).
 
             Is this alert physically consistent with the current state history? 
-            For example, "Overheating" is unlikely if Temp is 40C.
             Return JSON.
         `;
         
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -156,7 +159,7 @@ export const DigitalTwinAgent = {
                 }
             }
         });
-        return JSON.parse(response.text);
+        return JSON.parse(response.text || '{"validated": true, "reason": "Default validated"}');
     } catch (e) {
         // Fallback Logic
         if (alert.alertType?.includes("Overheat") && data.engineTemp < 90) {
@@ -173,23 +176,18 @@ export const OemInsightsAgent = {
    */
   generateLearningCard: async (notes: string, vehicleModel: string, issue: string): Promise<any> => {
     try {
-        const { ai, apiKey } = getAI();
-        if (apiKey === 'mock-key') throw new Error("No Key");
+        const { ai, hasKey } = getAI();
+        if (!hasKey) throw new Error("No Key");
 
         const prompt = `
             Analyze this repair report to create an OEM Learning Card.
             Vehicle: ${vehicleModel}
             Reported Issue: ${issue}
             Technician Notes: "${notes}"
-
-            Extract:
-            1. Root Cause
-            2. Recommended Fix Summary
-            3. Fault Category
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -203,7 +201,7 @@ export const OemInsightsAgent = {
                 }
             }
         });
-        return JSON.parse(response.text);
+        return JSON.parse(response.text || '{}');
     } catch (e) {
         return {
             rootCause: "Wear and tear or sensor drift",
@@ -220,9 +218,8 @@ export const VoiceInteractionAgent = {
    */
   chatWithDriver: async (message: string, context: any): Promise<{ text: string, emotion: 'NEUTRAL' | 'HAPPY' | 'CONCERNED' | 'ALERT' }> => {
     try {
-        const { ai, apiKey } = getAI();
-        if (apiKey === 'mock-key') {
-             // Mock response for demo without API key
+        const { ai, hasKey } = getAI();
+        if (!hasKey) {
              return {
                  text: "I can't connect to my brain right now, but your vehicle systems appear to be online.",
                  emotion: 'NEUTRAL'
@@ -232,17 +229,11 @@ export const VoiceInteractionAgent = {
         const prompt = `
             You are AutoMind, an empathetic and professional AI vehicle assistant.
             Current Vehicle Status: ${context.vehicleStatus}
-            Active Alerts: ${context.alertCount}
-            Latest Issue: ${context.latestAlert || 'None'}
-            
             User said: "${message}"
-            
-            Respond in a conversational, reassuring tone. Keep it brief (under 30 words) for voice output.
-            Also detect the appropriate emotion for the response.
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -255,7 +246,7 @@ export const VoiceInteractionAgent = {
                 }
             }
         });
-        return JSON.parse(response.text);
+        return JSON.parse(response.text || '{"text": "I heard you.", "emotion": "NEUTRAL"}');
     } catch (e) {
         return {
             text: "I'm having trouble processing that request right now.",

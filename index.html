@@ -3,8 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <script>
-      // CRITICAL: Define process.env before any imports run to prevent crash
-      window.process = window.process || { env: { NODE_ENV: 'production' } };
+      // CRITICAL: Define process.env globally before any modules are loaded.
+      // This prevents "process is not defined" errors common in production bundles/CDNs.
+      window.process = {
+        env: {
+          NODE_ENV: 'production',
+          API_KEY: '' // Will be injected by the environment
+        },
+        version: '',
+        nextTick: function(fn) { setTimeout(fn, 0); }
+      };
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AutoMind AI</title>
@@ -22,9 +30,28 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        background-color: #0f172a; /* Slate 950 */
+        background-color: #0f172a; /* Slate 950 - The "Blue" color user sees if app fails */
         color: #f8fafc; /* Slate 50 */
+        margin: 0;
+        min-height: 100vh;
       }
+      /* Loading State */
+      #root:empty::before {
+        content: 'Initializing AutoMind Engine...';
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #64748b;
+        font-family: monospace;
+        letter-spacing: 0.1em;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
@@ -101,6 +128,7 @@
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.1",
     "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.10.1",
     "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.87.1"
   }
