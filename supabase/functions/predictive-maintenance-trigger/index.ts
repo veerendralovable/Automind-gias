@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0"
 import { GoogleGenAI, Type } from "https://esm.sh/@google/genai"
@@ -5,9 +6,8 @@ import { GoogleGenAI, Type } from "https://esm.sh/@google/genai"
 serve(async (req) => {
   const { vehicleId, telematics } = await req.json();
   
-  // 1. Init Gemini
-  const apiKey = process.env.API_KEY || '';
-  const ai = new GoogleGenAI({ apiKey });
+  // 1. Init Gemini - Correct initialization using process.env.API_KEY.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   // 2. Init Supabase
   const supabase = createClient(
@@ -15,11 +15,11 @@ serve(async (req) => {
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
   );
 
-  // 3. Diagnosis Agent Logic
+  // 3. Diagnosis Agent Logic - Using gemini-3-pro-preview for advanced reasoning on anomalies.
   const prompt = `Analyze telematics: Temp ${telematics.engineTemp}, RPM ${telematics.rpm}. Is there an anomaly?`;
   
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-pro-preview',
     contents: prompt,
     config: {
       responseMimeType: 'application/json',
@@ -30,12 +30,13 @@ serve(async (req) => {
           alertType: { type: Type.STRING },
           severity: { type: Type.STRING },
           confidence: { type: Type.NUMBER }
-        }
+        },
+        required: ["isAnomaly"]
       }
     }
   });
 
-  const analysis = JSON.parse(response.text);
+  const analysis = JSON.parse(response.text || '{}');
 
   if (analysis.isAnomaly) {
     // 4. Trigger Digital Twin (Internal Call or Direct Logic)

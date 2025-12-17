@@ -1,10 +1,11 @@
 
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+import React, { Component, ReactNode, ErrorInfo } from 'react';
+import { createRoot } from 'react-dom/client';
 import App from './App';
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  // Make children optional to satisfy TS check when component is used in JSX
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -12,10 +13,9 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-// Fixed ErrorBoundary class to correctly recognize state and props generics
-class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Explicitly declare state property to satisfy TypeScript compiler
-  state: ErrorBoundaryState = { hasError: false, error: null };
+// Fixed class definition with explicit state property to resolve property access errors
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = { hasError: false, error: null };
 
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -25,12 +25,12 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Uncaught error:", error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Critical Runtime Error:", error, errorInfo);
   }
 
   render() {
-    // Correctly accessing state property from the instance
+    // Correctly accessing state and props inherited from Component
     if (this.state.hasError) {
       return (
         <div style={{ 
@@ -42,10 +42,10 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
           flexDirection: 'column', 
           justifyContent: 'center', 
           alignItems: 'center',
-          fontFamily: 'sans-serif',
+          fontFamily: 'system-ui, sans-serif',
           textAlign: 'center'
         }}>
-          <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Application Instance Error</h1>
+          <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: '#fff' }}>Application Logic Error</h1>
           <div style={{ 
             padding: '1rem', 
             backgroundColor: '#1e293b', 
@@ -56,9 +56,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             overflow: 'auto',
             textAlign: 'left'
           }}>
-            <p style={{ color: '#94a3b8', marginBottom: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-              Fault Signature
-            </p>
             <code style={{ fontFamily: 'monospace', fontSize: '0.9rem', color: '#fca5a5' }}>
               {this.state.error?.message || "Unknown Runtime Error"}
             </code>
@@ -82,20 +79,20 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       );
     }
 
-    // Fixed: Properly accessing props defined in the interface
     return this.props.children;
   }
 }
 
-const rootElement = document.getElementById('root');
-if (rootElement) {
-  const root = ReactDOM.createRoot(rootElement);
+const container = document.getElementById('root');
+if (container) {
+  const root = createRoot(container);
   root.render(
-    // Providing App as a child ensures ErrorBoundaryProps is correctly satisfied
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
   );
 } else {
-  console.error("Failed to find the root element");
+  console.error("Fatal: Root container not found in DOM.");
 }

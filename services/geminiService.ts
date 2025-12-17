@@ -7,12 +7,12 @@ import { TelematicsData, MaintenanceAlert } from "../types";
 
 export const DiagnosisAgent = {
   /**
-   * Analyzes vehicle telematics to predict faults using Gemini 3 Flash
+   * Analyzes vehicle telematics to predict faults using Gemini 3 Pro
    */
   analyzeTelematics: async (vehicleModel: string, data: TelematicsData): Promise<Partial<MaintenanceAlert> | null> => {
     try {
-      // Correct initialization using process.env.API_KEY directly.
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+      // Correct initialization using process.env.API_KEY directly without fallback.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const prompt = `
         Act as an expert automotive diagnostic AI. Analyze the following telematics data for a ${vehicleModel}.
@@ -29,7 +29,8 @@ export const DiagnosisAgent = {
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        // Use gemini-3-pro-preview for complex reasoning and diagnostic tasks.
+        model: 'gemini-3-pro-preview',
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -42,12 +43,13 @@ export const DiagnosisAgent = {
               confidence: { type: Type.NUMBER },
               description: { type: Type.STRING },
               recommendedAction: { type: Type.STRING }
-            }
+            },
+            required: ["isAnomaly"]
           }
         }
       });
 
-      // Correct method to extract text: use .text property (not a function).
+      // Correct method to extract text: use .text property.
       const result = JSON.parse(response.text || '{}');
 
       if (result.isAnomaly) {
@@ -102,7 +104,7 @@ export const DigitalTwinAgent = {
    */
   validateAnomaly: async (vehicleModel: string, data: TelematicsData, alert: Partial<MaintenanceAlert>): Promise<{ validated: boolean, reason: string }> => {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         
         const prompt = `
             You are a Digital Twin Simulation Engine. 
@@ -115,7 +117,8 @@ export const DigitalTwinAgent = {
         `;
         
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            // Pro model is preferred for complex physical system validation.
+            model: 'gemini-3-pro-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -124,7 +127,8 @@ export const DigitalTwinAgent = {
                     properties: {
                         validated: { type: Type.BOOLEAN },
                         reason: { type: Type.STRING }
-                    }
+                    },
+                    required: ["validated", "reason"]
                 }
             }
         });
@@ -144,7 +148,7 @@ export const OemInsightsAgent = {
    */
   generateLearningCard: async (notes: string, vehicleModel: string, issue: string): Promise<any> => {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const prompt = `
             Analyze this repair report to create an OEM Learning Card.
@@ -154,7 +158,8 @@ export const OemInsightsAgent = {
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            // Advanced reasoning for OEM engineering insights.
+            model: 'gemini-3-pro-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -164,7 +169,8 @@ export const OemInsightsAgent = {
                         rootCause: { type: Type.STRING },
                         fixSummary: { type: Type.STRING },
                         faultType: { type: Type.STRING }
-                    }
+                    },
+                    required: ["rootCause", "fixSummary", "faultType"]
                 }
             }
         });
@@ -185,7 +191,7 @@ export const VoiceInteractionAgent = {
    */
   chatWithDriver: async (message: string, context: any): Promise<{ text: string, emotion: 'NEUTRAL' | 'HAPPY' | 'CONCERNED' | 'ALERT' }> => {
     try {
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
         const prompt = `
             You are AutoMind, an empathetic and professional AI vehicle assistant.
@@ -194,6 +200,7 @@ export const VoiceInteractionAgent = {
         `;
 
         const response = await ai.models.generateContent({
+            // Using flash for lower latency in conversational UI.
             model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
@@ -203,7 +210,8 @@ export const VoiceInteractionAgent = {
                     properties: {
                         text: { type: Type.STRING },
                         emotion: { type: Type.STRING, enum: ["NEUTRAL", "HAPPY", "CONCERNED", "ALERT"] }
-                    }
+                    },
+                    required: ["text", "emotion"]
                 }
             }
         });
